@@ -3,66 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>舒尔特方格专注力训练</title>
+    <title>舒尔特方格专注力训练 - 终极版</title>
     <style>
-        :root { --primary: #4CAF50; --primary-hover: #45a049; --active: #2196F3; --bg: #f4f4f9; --card: #ffffff; --text: #333333; --shadow: 0 2px 8px rgba(0,0,0,0.1); --gold: #FFD700; --gold-dark: #B8860B; }
+        :root { --primary: #4CAF50; --primary-hover: #45a049; --active: #2196F3; --bg: #f4f4f9; --card: #ffffff; --text: #333333; --shadow: 0 2px 8px rgba(0,0,0,0.1); --gold: #FFD700; --gold-dark: #B8860B; --xp-bg: #e0e0e0; --xp-fill: #FF9800; --level-color: #9C27B0; }
         body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; display: flex; flex-direction: column; align-items: center; background: var(--bg); padding: 20px; margin: 0; color: var(--text); }
-        
-        /* 控制面板 */
+        .level-bar { width: 100%; max-width: 500px; background: var(--card); padding: 15px 20px; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 20px; display: flex; align-items: center; gap: 15px; }
+        .level-badge { width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, var(--level-color), #7B1FA2); color: white; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; flex-shrink: 0; box-shadow: 0 2px 8px rgba(156,39,176,0.3); }
+        .level-info { flex: 1; }
+        .level-title { font-size: 16px; font-weight: bold; color: var(--level-color); margin-bottom: 5px; }
+        .level-xp-bar { width: 100%; height: 12px; background: var(--xp-bg); border-radius: 6px; overflow: hidden; }
+        .level-xp-fill { height: 100%; background: linear-gradient(90deg, var(--xp-fill), #FFB74D); border-radius: 6px; transition: width 0.5s ease; }
+        .level-xp-text { font-size: 12px; color: #888; margin-top: 3px; }
         .controls { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; }
         button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; background: var(--primary); color: white; transition: 0.3s; box-shadow: var(--shadow); }
         button:hover { background: var(--primary-hover); transform: translateY(-2px); }
         button.active { background: var(--active); }
+        button.danger { background: #f44336; }
+        button.danger:hover { background: #d32f2f; }
+        button.secondary { background: #607D8B; }
+        button.secondary:hover { background: #455A64; }
+        button.golden { background: linear-gradient(135deg, #FFD700, #FFA500); color: #8B4513; font-weight: bold; }
         select { padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; cursor: pointer; outline: none; }
-
-        /* 信息栏 */
         .info { font-size: 24px; margin-bottom: 15px; font-weight: bold; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; justify-content: center; }
         .timer { color: var(--active); }
         .best { font-size: 16px; color: #888; font-weight: normal; }
-
-        /* 方格区域 */
         #grid { display: grid; gap: 5px; max-width: 500px; width: 100%; aspect-ratio: 1/1; margin-bottom: 30px; }
         .cell { display: flex; align-items: center; justify-content: center; background: var(--card); border-radius: 8px; font-size: 24px; font-weight: bold; cursor: pointer; user-select: none; transition: 0.2s; box-shadow: var(--shadow); }
         .cell:hover { background: #e0e0e0; transform: scale(1.05); }
         .cell.correct { background: var(--primary); color: white; pointer-events: none; transform: scale(0.95); }
         .cell.wrong { background: #f44336; color: white; animation: shake 0.3s; }
         @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
-
-        /* 达标特效 - 金色格子 */
-        .cell.golden {
-            background: linear-gradient(135deg, #FFD700, #FFA500) !important;
-            color: #8B4513 !important;
-            border: 2px solid #FFD700;
-            animation: goldenPulse 1s infinite;
-            pointer-events: none;
-        }
-        @keyframes goldenPulse {
-            0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
-            50% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.9); }
-        }
-
-        /* 达标提示横幅 */
-        .goal-banner {
-            display: none;
-            width: 100%;
-            max-width: 500px;
-            background: linear-gradient(135deg, #FFD700, #FFA500);
-            color: #8B4513;
-            padding: 12px 20px;
-            border-radius: 10px;
-            font-weight: bold;
-            font-size: 16px;
-            text-align: center;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
-            animation: bannerSlide 0.5s ease-out;
-        }
-        @keyframes bannerSlide {
-            from { transform: translateY(-20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        /* 打卡日历 */
+        .cell.golden { background: linear-gradient(135deg, #FFD700, #FFA500) !important; color: #8B4513 !important; border: 2px solid #FFD700; animation: goldenPulse 1s infinite; pointer-events: none; }
+        @keyframes goldenPulse { 0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); } 50% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.9); } }
+        .goal-banner { display: none; width: 100%; max-width: 500px; background: linear-gradient(135deg, #FFD700, #FFA500); color: #8B4513; padding: 12px 20px; border-radius: 10px; font-weight: bold; font-size: 16px; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4); animation: bannerSlide 0.5s ease-out; }
+        @keyframes bannerSlide { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .calendar { width: 100%; max-width: 500px; background: var(--card); padding: 20px; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 30px; }
         .calendar h3 { margin: 0 0 15px 0; font-size: 18px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
         .streak { font-size: 14px; color: #FF9800; font-weight: bold; }
@@ -72,34 +46,76 @@
         .day.checked { background: var(--primary); color: white; }
         .day.today { border: 2px solid var(--active); }
         .day.checked.today { background: var(--active); }
-        .day.checked::after { content: '🔥'; position: absolute; top: -5px; right: -5px; font-size: 10px; }
-
-        /* 历史记录 */
-        .history { width: 100%; max-width: 500px; background: var(--card); padding: 20px; border-radius: 12px; box-shadow: var(--shadow); }
+        .day.checked::after { content: '\1f525'; position: absolute; top: -5px; right: -5px; font-size: 10px; }
+        .history { width: 100%; max-width: 500px; background: var(--card); padding: 20px; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 30px; }
         .history h3 { margin: 0 0 15px 0; font-size: 18px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
         .record { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
         .record:last-child { border-bottom: none; }
         .record .mode { color: var(--active); font-weight: bold; }
-        .record .goal-badge { color: #FFD700; font-weight: bold; text-shadow: 0 0 3px rgba(255,215,0,0.5); }
+        .record .goal-badge { color: #FFD700; font-weight: bold; text-shadow: 0 0 3px rgba(255,255,255,0.5); }
         .clear-btn { background: #f44336; font-size: 12px; padding: 5px 10px; margin-left: auto; }
-
-        /* 训练目标说明 */
-        .goal-info {
-            width: 100%;
-            max-width: 500px;
-            background: var(--card);
-            padding: 15px 20px;
-            border-radius: 12px;
-            box-shadow: var(--shadow);
-            margin-bottom: 20px;
-            border-left: 4px solid var(--gold);
-        }
+        .goal-info { width: 100%; max-width: 500px; background: var(--card); padding: 15px 20px; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 20px; border-left: 4px solid var(--gold); }
         .goal-info h4 { margin: 0 0 8px 0; font-size: 15px; color: var(--gold-dark); }
         .goal-info p { margin: 4px 0; font-size: 13px; color: #666; }
         .goal-info .gold-text { color: var(--gold-dark); font-weight: bold; }
-    </style>
+        .color-word-container { display: none; flex-direction: column; align-items: center; justify-content: center; height: 300px; width: 100%; max-width: 500px; background: white; border-radius: 12px; box-shadow: var(--shadow); padding: 20px; }
+        .color-word-display { font-size: 80px; font-weight: bold; margin-bottom: 30px; }
+        .next-btn { background-color: var(--active); color: white; padding: 12px 24px; font-size: 18px; border: none; border-radius: 8px; cursor: pointer; }
+        .memory-container { display: none; flex-direction: column; align-items: center; justify-content: center; height: 300px; width: 100%; max-width: 500px; background: white; border-radius: 12px; box-shadow: var(--shadow); padding: 20px; }
+        .memory-instruction { font-size: 20px; margin-bottom: 20px; text-align: center; }
+        .memory-input { padding: 10px; font-size: 18px; width: 80%; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        .memory-submit { background-color: var(--primary); color: white; padding: 10px 20px; font-size: 18px; border: none; border-radius: 8px; cursor: pointer; }
+        .ranking { width: 100%; max-width: 500px; background: var(--card); padding: 20px; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 30px; }
+        .ranking h3 { margin: 0 0 15px 0; font-size: 18px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
+        .rank-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+        .rank-item:last-child { border-bottom: none; }
+        .rank-pos { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; margin-right: 10px; flex-shrink: 0; }
+        .rank-pos.gold { background: linear-gradient(135deg, #FFD700, #FFA500); color: #8B4513; }
+        .rank-pos.silver { background: linear-gradient(135deg, #C0C0C0, #A0A0A0); color: #333; }
+        .rank-pos.bronze { background: linear-gradient(135deg, #CD7F32, #A0522D); color: white; }
+        .rank-pos.normal { background: #e0e0e0; color: #666; }
+        .rank-info { flex: 1; }
+        .rank-mode { font-size: 14px; font-weight: bold; color: var(--active); }
+        .rank-detail { font-size: 12px; color: #888; }
+        .rank-time { font-size: 14px; font-weight: bold; color: var(--text); }
+        .backup-section { width: 100%; max-width: 500px; background: var(--card); padding: 20px; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 30px; }
+        .backup-section h3 { margin: 0 0 15px 0; font-size: 18px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
+        .backup-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .backup-note { font-size: 12px; color: #888; margin-top: 10px; line-height: 1.6; }
+        #importFileInput { display: none; }
+        .stats-panel { width: 100%; max-width: 500px; background: var(--card); padding: 20px; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 30px; }
+        .stats-panel h3 { margin: 0 0 15px 0; font-size: 18px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .stat-card { background: var(--bg); padding: 15px; border-radius: 8px; text-align: center; }
+        .stat-value { font-size: 28px; font-weight: bold; color: var(--active); }
+        .stat-label { font-size: 12px; color: #888; margin-top: 5px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 100; }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; text-align: center; min-width: 300px; max-width: 500px; max-height: 80vh; overflow-y: auto; }
+        .modal h2 { color: var(--primary); }
+        .modal p { margin: 10px 0; }
+        .modal button { margin: 5px; }
+    
+        .qr-section{margin:15px 0;text-align:center}
+        .qr-section p{font-size:13px;color:#666;margin:8px 0}
+        #qrcode{display:inline-block;padding:10px;background:#fff;border:2px solid #ddd;border-radius:8px;margin:10px 0}
+        #qrcode img{display:block}
+        #qr-scanner{width:100%;max-width:300px;margin:10px auto}
+        .text-backup-area{width:100%;min-height:80px;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:11px;font-family:monospace;resize:vertical;margin:8px 0}
+        .copy-btn{background:#2196F3;font-size:13px;padding:6px 14px;margin:4px}
+        .text-backup-note{font-size:12px;color:#888;margin:8px 0;line-height:1.6}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
+<div class="level-bar">
+    <div class="level-badge" id="levelBadge">1</div>
+    <div class="level-info">
+        <div class="level-title" id="levelTitle">训练新手</div>
+        <div class="level-xp-bar"><div class="level-xp-fill" id="xpFill" style="width:0%"></div></div>
+        <div class="level-xp-text" id="xpText">0 / 10 XP</div>
+    </div>
+</div>
 
 <div class="controls">
     <select id="sizeSelect" onchange="changeSize(this.value)">
@@ -108,11 +124,18 @@
         <option value="5" selected>5x5 (标准)</option>
         <option value="6">6x6 (挑战)</option>
         <option value="7">7x7 (极限)</option>
+        <option value="8">8x8 (噩梦)</option>
         <option value="9">9x9 (地狱)</option>
     </select>
-    <button onclick="initGame('number')" id="btn-number">数字模式</button>
+    <button onclick="initGame('number')" id="btn-number">数字舒尔特</button>
     <button onclick="initGame('hanzi')" id="btn-hanzi">汉字模式</button>
-    <button onclick="initGame('color')" id="btn-color">色彩模式</button>
+    <button onclick="initGame('color')" id="btn-color">色彩干扰</button>
+    <button onclick="initGame('flash')" id="btn-flash">闪忆方格</button>
+    <button onclick="initGame('word')" id="btn-word">色彩识字</button>
+    <button onclick="initGame('memory')" id="btn-memory">数字记忆</button>
+    <button class="secondary" onclick="showRanking()">排行榜</button>
+    <button class="secondary" onclick="showStats()">我的统计</button>
+    <button class="secondary" onclick="showBackup()">备份/恢复</button>
 </div>
 
 <div class="info">
@@ -123,37 +146,103 @@
 
 <div id="grid"></div>
 
-<!-- 达标提示横幅 -->
+<div class="color-word-container" id="colorWordContainer">
+    <div class="color-word-display" id="colorWordDisplay"></div>
+    <button class="next-btn" onclick="nextColorWord()">下一个</button>
+</div>
+
+<div class="memory-container" id="memoryContainer">
+    <div class="memory-instruction" id="memoryInstruction">点击开始训练，听数字并复述</div>
+    <input type="text" class="memory-input" id="memoryInput" placeholder="在此输入你记住的数字" style="display:none;">
+    <button class="memory-submit" id="memoryStartBtn" onclick="startMemoryGame()">开始训练</button>
+    <button class="memory-submit" id="memorySubmitBtn" onclick="checkMemory()" style="display:none;">提交</button>
+</div>
+
 <div class="goal-banner" id="goalBanner">
     🎉 恭喜达成训练目标！所有格子已变为金色！
 </div>
 
-<!-- 训练目标说明 -->
 <div class="goal-info">
     <h4>🎯 训练目标（达标即金色特效）</h4>
-    <p>• 5x5 数字模式：≤ <span class="gold-text">30秒</span> → 格子变金色</p>
-    <p>• 5x5 汉字模式：≤ <span class="gold-text">40秒</span> → 格子变金色</p>
-    <p>• 5x5 色彩模式：≤ <span class="gold-text">45秒</span> → 格子变金色</p>
-    <p>• 其他尺寸：标准时间 × 0.8 倍为达标线</p>
+    <p>• 5x5 数字舒尔特：≤ 30秒 → 格子变金色</p>
+    <p>• 5x5 汉字模式：≤ 40秒 → 格子变金色</p>
+    <p>• 5x5 色彩干扰：≤ 45秒 → 格子变金色</p>
+    <p>• 5x5 闪忆方格：≤ 30秒 → 格子变金色</p>
+    <p>• 色彩识字（25题）：≤ 60秒 → 达标标记</p>
+    <p>• 数字记忆：以准确率为准，≥ 80% 为达标</p>
+    <p>• 其他尺寸：达标时间 = 标准时间 × 1.5^(尺寸-5)</p>
 </div>
 
-<!-- 打卡日历 -->
 <div class="calendar">
     <h3>
-        📅 训练打卡日历 
+        📅 训练打卡日历
         <span class="streak" id="streakDisplay">🔥 连续打卡: 0天</span>
     </h3>
     <div class="calendar-grid" id="calendarGrid"></div>
 </div>
 
-<!-- 历史记录 -->
 <div class="history">
     <h3>📊 最近训练记录 <button class="clear-btn" onclick="clearHistory()">清空</button></h3>
     <div id="historyList"><div style="color:#aaa; text-align:center; padding:20px;">暂无记录，快去训练吧！</div></div>
 </div>
 
+<div class="modal" id="rankingModal">
+    <div class="modal-content">
+        <h2>🏆 我的个人排行榜</h2>
+        <div id="rankingContent"></div>
+        <button onclick="closeModal('rankingModal')">关闭</button>
+    </div>
+</div>
+
+<div class="modal" id="statsModal">
+    <div class="modal-content">
+        <h2>📊 我的训练统计</h2>
+        <div id="statsContent"></div>
+        <button onclick="closeModal('statsModal')">关闭</button>
+    </div>
+</div>
+
+<div class="modal" id="backupModal">
+    <div class="modal-content" style="max-width:600px;">
+        <h2>Backup & Restore</h2>
+        <div style="text-align:left; margin: 20px 0;">
+            <p><strong>Export (File):</strong> Export all data as a file.</p>
+            <button class="golden" onclick="exportData()">Export Backup File</button>
+            <p style="margin-top:15px;"><strong>QR Code Backup:</strong> Generate QR code, scan on another device to restore.</p>
+            <button class="golden" onclick="generateQRCode()">Generate QR Code</button>
+            <div class="qr-section" id="qrDisplay" style="display:none;">
+                <div id="qrcode"></div>
+                <p style="font-size:12px; color:#888;">Scan this QR code with another device to restore</p>
+            </div>
+            <p style="margin-top:15px;"><strong>Text Link Backup:</strong> Copy as text, share via WeChat/QQ/Email/SMS, paste to restore.</p>
+            <button class="copy-btn" style="background:#4CAF50;" onclick="exportAsText()">Copy Text Backup</button>
+            <div class="qr-section" id="textBackupDisplay" style="display:none;">
+                <textarea class="text-backup-area" id="textBackupArea" readonly></textarea>
+                <br>
+                <button class="copy-btn" onclick="copyTextBackup()">Copy to Clipboard</button>
+                <p class="text-backup-note">Share this text via WeChat/QQ/Email/SMS. Recipient pastes it below to restore.</p>
+            </div>
+            <p style="margin-top:20px; border-top:1px solid #ddd; padding-top:15px;"><strong>QR Code Scan Import:</strong> Open camera to scan a shared QR code.</p>
+            <button class="secondary" onclick="startQRScanner()">Open Camera to Scan</button>
+            <div id="qr-scanner" style="display:none;"></div>
+            <p style="margin-top:15px;"><strong>Text Import:</strong> Paste shared text below and click restore.</p>
+            <textarea class="text-backup-area" id="textImportArea" placeholder="Paste text backup here..."></textarea>
+            <br>
+            <button class="secondary" style="background:#2196F3;" onclick="importFromText()">Restore from Text</button>
+            <p style="margin-top:15px;"><strong>Import (File):</strong> Restore from a previously exported .json file.</p>
+            <input type="file" id="importFileInput" accept=".json" onchange="importData(event)" style="display:none;">
+            <button class="secondary" onclick="document.getElementById('importFileInput').click()">Import Backup File</button>
+            <p style="margin-top:20px; border-top:1px solid #ddd; padding-top:15px;"><strong>Reset Data:</strong> Clear all local data (caution).</p>
+            <button class="danger" onclick="resetAllData()">Reset All Data</button>
+        </div>
+        <div class="backup-note">
+            <p>Tip: Regularly export backups. Text backup can be shared via WeChat/QQ/Email/SMS.</p>
+        </div>
+        <button onclick="closeModal('backupModal')">Close</button>
+    </div>
+</div>
+
 <script>
-    // --- 配置 ---
     let currentMode = 'number';
     let gridSize = 5;
     let targetIndex = 1;
@@ -161,26 +250,30 @@
     let startTime = 0;
     let isPlaying = false;
     let colorSubMode = 'char';
-    let goalAchieved = false; // 是否达成训练目标
+    let goalAchieved = false;
 
-    // 训练目标时间（秒），5x5 标准
-    const goalTimes = {
-        'number': 30,
-        'hanzi': 40,
-        'color': 45
-    };
-
-    // 汉字库
+    const goalTimes = { 'number': 30, 'hanzi': 40, 'color': 45 };
     const hanziList = "天地玄黄宇宙洪荒日月盈昃辰宿列张寒来暑往秋收冬藏闰余成岁律吕调阳云腾致雨露结为霜金生丽水玉出昆冈剑号巨阙珠称夜光果珍李柰菜重芥姜海咸河淡鳞潜羽翔龙师火帝鸟官人皇始制文字乃服衣裳推位让国有虞陶唐吊民伐罪周发殷汤坐朝问道垂拱平章爱育黎首臣伏戎羌遐迩一体率宾归王".split('');
-    
-    // 色彩库
     const colorList = [
-        {name: "红", hex: "#f44336"}, {name: "蓝", hex: "#2196F3"}, {name: "绿", hex: "#4CAF50"}, 
-        {name: "黄", hex: "#FFEB3B"}, {name: "紫", hex: "#9C27B0"}, {name: "橙", hex: "#FF9800"}, 
+        {name: "红", hex: "#f44336"}, {name: "蓝", hex: "#2196F3"}, {name: "绿", hex: "#4CAF50"},
+        {name: "黄", hex: "#FFEB3B"}, {name: "紫", hex: "#9C27B0"}, {name: "橙", hex: "#FF9800"},
         {name: "粉", hex: "#E91E63"}, {name: "青", hex: "#00BCD4"}, {name: "棕", hex: "#795548"}
     ];
 
-    // --- 核心逻辑 ---
+    // 等级系统配置
+    const levelConfig = [
+        { level: 1, title: "训练新手", xpNeeded: 0 },
+        { level: 2, title: "初出茅庐", xpNeeded: 10 },
+        { level: 3, title: "渐入佳境", xpNeeded: 25 },
+        { level: 4, title: "专注学徒", xpNeeded: 50 },
+        { level: 5, title: "专注高手", xpNeeded: 80 },
+        { level: 6, title: "眼疾手快", xpNeeded: 120 },
+        { level: 7, title: "舒尔特大师", xpNeeded: 170 },
+        { level: 8, title: "记忆之王", xpNeeded: 230 },
+        { level: 9, title: "传奇训练家", xpNeeded: 300 },
+        { level: 10, title: "专注之神", xpNeeded: 400 },
+    ];
+
     function initGame(mode) {
         currentMode = mode;
         targetIndex = 1;
@@ -189,12 +282,18 @@
         clearInterval(timerInterval);
         document.getElementById('timer').innerText = "0.0";
         document.getElementById('goalBanner').style.display = 'none';
-        
+        document.getElementById('colorWordContainer').style.display = 'none';
+        document.getElementById('memoryContainer').style.display = 'none';
+        document.getElementById('grid').style.display = 'grid';
         document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
-        document.getElementById(`btn-${mode}`).classList.add('active');
-
+        const btn = document.getElementById('btn-' + mode);
+        if (btn) btn.classList.add('active');
         updateBestRecord();
-        generateGrid();
+        renderHistory();
+        updateLevelDisplay();
+        if (mode === 'word') { initWordMode(); }
+        else if (mode === 'memory') { initMemoryMode(); }
+        else { generateGrid(); }
     }
 
     function changeSize(size) {
@@ -205,11 +304,9 @@
     function generateGrid() {
         const grid = document.getElementById('grid');
         grid.innerHTML = '';
-        grid.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
-        
+        grid.style.gridTemplateColumns = 'repeat(' + gridSize + ', 1fr)';
         let items = [];
         const totalCells = gridSize * gridSize;
-
         if (currentMode === 'number') {
             items = Array.from({length: totalCells}, (_, i) => i + 1);
         } else if (currentMode === 'hanzi') {
@@ -222,14 +319,13 @@
             const pool = [];
             for(let i=0; i<needed; i++) pool.push(...colorList);
             items = pool.sort(() => Math.random() - 0.5).slice(0, totalCells);
+        } else if (currentMode === 'flash') {
+            items = Array.from({length: totalCells}, (_, i) => i + 1);
         }
-        
         items.sort(() => Math.random() - 0.5);
-
         items.forEach(item => {
             const cell = document.createElement('div');
             cell.className = 'cell';
-            
             if (currentMode === 'number') {
                 cell.innerText = item;
                 cell.dataset.value = item;
@@ -241,18 +337,18 @@
                 cell.style.color = colorList[Math.floor(Math.random() * colorList.length)].hex;
                 cell.dataset.char = item.name;
                 cell.dataset.color = cell.style.color;
+            } else if (currentMode === 'flash') {
+                cell.innerText = item;
+                cell.dataset.value = item;
             }
-            
             cell.onclick = () => handleClick(cell);
             grid.appendChild(cell);
         });
-
         updateTarget();
     }
 
     function handleClick(cell) {
         if (cell.classList.contains('correct') || cell.classList.contains('golden')) return;
-
         if (!isPlaying) {
             isPlaying = true;
             startTime = Date.now();
@@ -261,7 +357,6 @@
                 document.getElementById('timer').innerText = elapsed;
             }, 100);
         }
-
         let isCorrect = false;
         if (currentMode === 'color') {
             if (colorSubMode === 'char') {
@@ -272,7 +367,6 @@
         } else {
             isCorrect = (cell.dataset.value == getTargetValue());
         }
-
         if (isCorrect) {
             cell.classList.add('correct');
             targetIndex++;
@@ -290,20 +384,11 @@
     function finishGame() {
         clearInterval(timerInterval);
         const finalTime = parseFloat(document.getElementById('timer').innerText);
-        let modeName = '';
-        if (currentMode === 'number') modeName = '数字';
-        else if (currentMode === 'hanzi') modeName = '汉字';
-        else modeName = colorSubMode === 'char' ? '色彩(按字)' : '色彩(按色)';
-        
-        // 判断是否达成训练目标
         const standardGoal = goalTimes[currentMode] || 30;
-        // 根据网格大小调整目标时间：每增大一档，时间乘以1.5倍
         const sizeMultiplier = Math.pow(1.5, gridSize - 5);
         const goalTime = Math.round(standardGoal * sizeMultiplier);
         const achieved = finalTime <= goalTime;
         goalAchieved = achieved;
-
-        // 如果达成目标，所有格子变金色
         if (achieved) {
             document.querySelectorAll('.cell').forEach(cell => {
                 cell.classList.remove('correct');
@@ -311,14 +396,21 @@
             });
             document.getElementById('goalBanner').style.display = 'block';
         }
-
-        saveRecord(modeName, gridSize, finalTime, achieved);
+        saveRecord(finalTime, achieved);
+        addXP(achieved ? 5 : 2);
         updateBestRecord();
         checkInToday();
-        
-        let msg = `🎉 恭喜完成！\n模式: ${modeName} ${gridSize}x${gridSize}\n用时: ${finalTime}s`;
+        updateLevelDisplay();
+        let modeNameFull = '';
+        if (currentMode === 'number') modeNameFull = '数字舒尔特';
+        else if (currentMode === 'hanzi') modeNameFull = '汉字模式';
+        else if (currentMode === 'flash') modeNameFull = '闪忆方格';
+        else if (currentMode === 'color') modeNameFull = colorSubMode === 'char' ? '色彩干扰(按字)' : '色彩干扰(按色)';
+        let msg = '🎉 恭喜完成！\n模式: ' + modeNameFull + ' ' + gridSize + 'x' + gridSize + '\n用时: ' + finalTime + 's';
         if (achieved) {
-            msg += `\n🏆 达成训练目标！格子已变为金色！`;
+            msg += '\n🏆 达成训练目标！格子已变为金色！\n✨ +5 XP';
+        } else {
+            msg += '\n标准: ' + goalTime + 's，继续加油！\n✨ +2 XP';
         }
         alert(msg);
     }
@@ -330,6 +422,7 @@
             const c = colorList[(targetIndex - 1) % colorList.length];
             return colorSubMode === 'char' ? c.name : c.hex;
         }
+        if (currentMode === 'flash') return targetIndex;
     }
 
     function updateTarget() {
@@ -337,20 +430,173 @@
         if (currentMode === 'color') {
             const c = colorList[(targetIndex-1) % colorList.length];
             if (colorSubMode === 'char') {
-                targetEl.innerHTML = `<span style="color:${c.hex}">${c.name}</span>`;
+                targetEl.innerHTML = '<span style="color:' + c.hex + '">' + c.name + '</span>';
             } else {
-                targetEl.innerHTML = `<span style="color:${c.hex}; border-bottom: 3px solid ${c.hex}">找这个颜色</span>`;
+                targetEl.innerHTML = '<span style="color:' + c.hex + '; border-bottom: 3px solid ' + c.hex + '">找这个颜色</span>';
             }
         } else {
             targetEl.innerText = getTargetValue();
         }
     }
 
-    // --- 打卡日历逻辑 ---
+    // 色彩识字模式
+    let wordSequence = [];
+    let currentWordIndex = 0;
+
+    function initWordMode() {
+        document.getElementById('grid').style.display = 'none';
+        document.getElementById('colorWordContainer').style.display = 'flex';
+        wordSequence = [];
+        currentWordIndex = 0;
+        wordStartTime = Date.now();
+        for (let i = 0; i < 25; i++) {
+            const colorObj = colorList[i % colorList.length];
+            let fontColor;
+            do {
+                fontColor = colorList[Math.floor(Math.random() * colorList.length)];
+            } while (fontColor.name === colorObj.name);
+            wordSequence.push({ text: colorObj.name, color: fontColor.hex });
+        }
+        showCurrentWord();
+        isPlaying = true;
+        startTime = Date.now();
+        timerInterval = setInterval(() => {
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            document.getElementById('timer').innerText = elapsed;
+        }, 100);
+    }
+
+    function showCurrentWord() {
+        if (currentWordIndex < wordSequence.length) {
+            const word = wordSequence[currentWordIndex];
+            const display = document.getElementById('colorWordDisplay');
+            display.innerText = word.text;
+            display.style.color = word.color;
+            document.getElementById('target').innerText = '第 ' + (currentWordIndex + 1) + '/25 题';
+        } else {
+            finishWordMode();
+        }
+    }
+
+    function nextColorWord() {
+        currentWordIndex++;
+        if (currentWordIndex >= wordSequence.length) {
+            finishWordMode();
+        } else {
+            showCurrentWord();
+        }
+    }
+
+    function finishWordMode() {
+        clearInterval(timerInterval);
+        isPlaying = false;
+        const finalTime = parseFloat(document.getElementById('timer').innerText);
+        const achieved = finalTime <= 60;
+        saveRecord(finalTime, achieved);
+        addXP(achieved ? 5 : 2);
+        updateBestRecord();
+        checkInToday();
+        updateLevelDisplay();
+        let msg = '🎉 色彩识字完成！\n用时: ' + finalTime + 's\n共 ' + wordSequence.length + ' 题';
+        if (achieved) {
+            msg += '\n🏆 达成训练目标（标准60秒）！\n✨ +5 XP';
+        } else {
+            msg += '\n标准: 60秒，继续加油！\n✨ +2 XP';
+        }
+        alert(msg);
+    }
+
+    // 数字记忆模式
+    let memoryNumbers = [];
+    let memoryPhase = 'idle';
+
+    function initMemoryMode() {
+        document.getElementById('grid').style.display = 'none';
+        document.getElementById('memoryContainer').style.display = 'flex';
+        document.getElementById('memoryInstruction').innerText = '点击"开始训练"，听数字并复述';
+        document.getElementById('memoryInput').style.display = 'none';
+        document.getElementById('memoryStartBtn').style.display = 'inline-block';
+        document.getElementById('memorySubmitBtn').style.display = 'none';
+        document.getElementById('memoryInput').value = '';
+        memoryPhase = 'idle';
+    }
+
+    function startMemoryGame() {
+        memoryPhase = 'listening';
+        document.getElementById('memoryInstruction').innerText = '请认真听数字...';
+        document.getElementById('memoryStartBtn').style.display = 'none';
+        memoryNumbers = [];
+        for (let i = 0; i < 10; i++) {
+            memoryNumbers.push(Math.floor(Math.random() * 99) + 1);
+        }
+        let i = 0;
+        const speakInterval = setInterval(() => {
+            if (i < memoryNumbers.length) {
+                const utterance = new SpeechSynthesisUtterance(memoryNumbers[i].toString());
+                utterance.lang = 'zh-CN';
+                utterance.rate = 1.2;
+                speechSynthesis.speak(utterance);
+                i++;
+            } else {
+                clearInterval(speakInterval);
+                startRecallPhase();
+            }
+        }, 1500);
+    }
+
+    function startRecallPhase() {
+        memoryPhase = 'counting';
+        let countdown = 5;
+        document.getElementById('memoryInstruction').innerText = '请在 ' + countdown + ' 秒后输入你记住的数字';
+        const countInterval = setInterval(() => {
+            countdown--;
+            if (countdown > 0) {
+                document.getElementById('memoryInstruction').innerText = '请在 ' + countdown + ' 秒后输入你记住的数字';
+            } else {
+                clearInterval(countInterval);
+                memoryPhase = 'recalling';
+                document.getElementById('memoryInstruction').innerText = '请输入你记住的10个数字（用空格分隔）';
+                document.getElementById('memoryInput').style.display = 'block';
+                document.getElementById('memorySubmitBtn').style.display = 'inline-block';
+                document.getElementById('memoryInput').focus();
+            }
+        }, 1000);
+    }
+
+    function checkMemory() {
+        const input = document.getElementById('memoryInput').value.trim();
+        if (!input) return;
+        const userNumbers = input.split(/\s+/).map(Number).filter(n => !isNaN(n));
+        let correct = 0;
+        for (let i = 0; i < Math.min(memoryNumbers.length, userNumbers.length); i++) {
+            if (userNumbers[i] === memoryNumbers[i]) correct++;
+        }
+        const accuracy = Math.round((correct / memoryNumbers.length) * 100);
+        const achieved = accuracy >= 80;
+        saveRecord(accuracy, achieved);
+        addXP(achieved ? 5 : 2);
+        updateBestRecord();
+        checkInToday();
+        updateLevelDisplay();
+        let msg = '📝 复述结果：\n正确: ' + correct + '/10\n准确率: ' + accuracy + '%\n\n正确答案: ' + memoryNumbers.join(' ');
+        if (achieved) {
+            msg += '\n🏆 达成训练目标（标准80%）！\n✨ +5 XP';
+        } else {
+            msg += '\n标准: 80%，继续加油！\n✨ +2 XP';
+        }
+        alert(msg);
+        memoryPhase = 'idle';
+        document.getElementById('memoryInstruction').innerText = '点击"开始训练"，听数字并复述';
+        document.getElementById('memoryInput').style.display = 'none';
+        document.getElementById('memoryStartBtn').style.display = 'inline-block';
+        document.getElementById('memorySubmitBtn').style.display = 'none';
+        document.getElementById('memoryInput').value = '';
+    }
+
+    // 打卡日历
     function getCheckInData() {
         return JSON.parse(localStorage.getItem('schulte_checkins') || '{}');
     }
-
     function checkInToday() {
         const today = new Date().toISOString().split('T')[0];
         const data = getCheckInData();
@@ -358,18 +604,15 @@
         localStorage.setItem('schulte_checkins', JSON.stringify(data));
         renderCalendar();
     }
-
     function renderCalendar() {
         const grid = document.getElementById('calendarGrid');
         grid.innerHTML = '';
-        
         ['日', '一', '二', '三', '四', '五', '六'].forEach(d => {
             const div = document.createElement('div');
             div.className = 'day-header';
             div.innerText = d;
             grid.appendChild(div);
         });
-
         const today = new Date();
         const year = today.getFullYear();
         const month = today.getMonth();
@@ -377,106 +620,441 @@
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const checkInData = getCheckInData();
         const todayStr = today.toISOString().split('T')[0];
-
         for(let i = 0; i < firstDay; i++) {
             const div = document.createElement('div');
             div.className = 'day';
             grid.appendChild(div);
         }
-
         for(let d = 1; d <= daysInMonth; d++) {
-            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
             const div = document.createElement('div');
             div.className = 'day';
             div.innerText = d;
-            
-            if (checkInData[dateStr]) {
-                div.classList.add('checked');
-            }
-            
+            if (checkInData[dateStr]) { div.classList.add('checked'); }
             if (dateStr === todayStr) div.classList.add('today');
-            
             grid.appendChild(div);
         }
-
         let streak = 0;
         let checkDate = new Date();
+        const todayCheck = checkInData[checkDate.toISOString().split('T')[0]];
+        if (!todayCheck) { checkDate.setDate(checkDate.getDate() - 1); }
         while(true) {
             const dateStr = checkDate.toISOString().split('T')[0];
-            if (checkInData[dateStr]) {
-                streak++;
-                checkDate.setDate(checkDate.getDate() - 1);
-            } else {
-                break;
-            }
+            if (checkInData[dateStr]) { streak++; checkDate.setDate(checkDate.getDate() - 1); }
+            else { break; }
         }
-
-        document.getElementById('streakDisplay').innerText = `🔥 连续打卡: ${streak}天`;
+        document.getElementById('streakDisplay').innerText = '🔥 连续打卡: ' + streak + '天';
     }
 
-    // --- 本地存储逻辑 ---
+    // 本地存储
     function getStorageKey() {
-        return `schulte_${currentMode}_${gridSize}`;
+        return 'schulte_' + currentMode + '_' + gridSize;
     }
-
-    function saveRecord(mode, size, time, achieved) {
-        const key = `schulte_${mode}_${size}`;
+    function getModeDisplayName() {
+        if (currentMode === 'number') return '数字舒尔特';
+        if (currentMode === 'hanzi') return '汉字模式';
+        if (currentMode === 'flash') return '闪忆方格';
+        if (currentMode === 'color') return colorSubMode === 'char' ? '色彩干扰(按字)' : '色彩干扰(按色)';
+        if (currentMode === 'word') return '色彩识字';
+        if (currentMode === 'memory') return '数字记忆';
+        return '未知模式';
+    }
+    function saveRecord(time, achieved) {
+        const key = getStorageKey();
         const history = JSON.parse(localStorage.getItem(key) || '[]');
-        
         history.unshift({
             time: time,
+            mode: getModeDisplayName(),
             date: new Date().toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}),
-            achieved: achieved || false
+            achieved: achieved || false,
+            gridSize: gridSize,
+            modeKey: currentMode
         });
-        
         if (history.length > 10) history.pop();
-        
         localStorage.setItem(key, JSON.stringify(history));
         renderHistory();
     }
-
     function updateBestRecord() {
         const key = getStorageKey();
         const history = JSON.parse(localStorage.getItem(key) || '[]');
         const bestEl = document.getElementById('bestRecord');
-        
         if (history.length > 0) {
-            const best = Math.min(...history.map(h => h.time));
-            bestEl.innerText = `🏆 最佳: ${best}s`;
+            const isMemory = currentMode === 'memory';
+            if (isMemory) {
+                const best = Math.max(...history.map(h => h.time));
+                bestEl.innerText = '🏆 最佳准确率: ' + best + '%';
+            } else {
+                const best = Math.min(...history.map(h => h.time));
+                bestEl.innerText = '🏆 最佳: ' + best + 's';
+            }
         } else {
-            bestEl.innerText = `🏆 最佳: -`;
+            bestEl.innerText = '🏆 最佳: -';
         }
-        renderHistory();
     }
-
     function renderHistory() {
         const key = getStorageKey();
         const history = JSON.parse(localStorage.getItem(key) || '[]');
         const listEl = document.getElementById('historyList');
-        
         if (history.length === 0) {
-            listEl.innerHTML = `<div style="color:#aaa; text-align:center; padding:20px;">暂无记录，快去训练吧！</div>`;
+            listEl.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">暂无记录，快去训练吧！</div>';
             return;
         }
-
-        listEl.innerHTML = history.map(h => `
-            <div class="record">
-                <span class="mode">${h.date}</span>
-                <span>${h.achieved ? '<span class="goal-badge">🏆 达标!</span> ' : ''}⏱️ ${h.time}s</span>
-            </div>
-        `).join('');
+        listEl.innerHTML = history.map(h =>
+            '<div class="record">' +
+            '<span class="mode">' + h.mode + ' | ' + h.date + '</span>' +
+            '<span>' + (h.achieved ? '<span class="goal-badge">🏆 达标!</span> ' : '') + (currentMode === 'memory' ? '⏱️ ' + h.time + '%' : '⏱️ ' + h.time + 's') + '</span>' +
+            '</div>'
+        ).join('');
     }
-
     function clearHistory() {
         if(confirm('确定要清空当前模式的所有记录吗？')) {
             localStorage.removeItem(getStorageKey());
             updateBestRecord();
+            renderHistory();
         }
+    }
+
+    // 等级系统
+    function getXpData() {
+        return JSON.parse(localStorage.getItem('schulte_xp') || '{"totalXP":0,"level":1}');
+    }
+    function saveXpData(data) {
+        localStorage.setItem('schulte_xp', JSON.stringify(data));
+    }
+    function addXP(amount) {
+        const xpData = getXpData();
+        xpData.totalXP = (xpData.totalXP || 0) + amount;
+        let newLevel = xpData.level || 1;
+        for (let i = levelConfig.length - 1; i >= 0; i--) {
+            if (xpData.totalXP >= levelConfig[i].xpNeeded) {
+                newLevel = levelConfig[i].level;
+                break;
+            }
+        }
+        if (newLevel > xpData.level) {
+            xpData.level = newLevel;
+            setTimeout(() => {
+                const lvlTitle = levelConfig.find(l => l.level === newLevel).title;
+                alert('🎉 恭喜升级！你现在是 ' + lvlTitle + ' (Lv.' + newLevel + ')！');
+            }, 500);
+        }
+        saveXpData(xpData);
+        updateLevelDisplay();
+    }
+    function updateLevelDisplay() {
+        const xpData = getXpData();
+        const totalXP = xpData.totalXP || 0;
+        const currentLevel = xpData.level || 1;
+        const currentCfg = levelConfig.find(l => l.level === currentLevel) || levelConfig[0];
+        const nextCfg = levelConfig.find(l => l.level === currentLevel + 1);
+        const xpInLevel = totalXP - currentCfg.xpNeeded;
+        const xpNeededForNext = nextCfg ? nextCfg.xpNeeded - currentCfg.xpNeeded : 1;
+        const progress = nextCfg ? Math.min(100, (xpInLevel / xpNeededForNext) * 100) : 100;
+        document.getElementById('levelBadge').innerText = currentLevel;
+        document.getElementById('levelTitle').innerText = currentCfg.title;
+        document.getElementById('xpFill').style.width = progress + '%';
+        document.getElementById('xpText').innerText = nextCfg ? xpInLevel + ' / ' + xpNeededForNext + ' XP' : '已满级！';
+    }
+
+    // 排行榜（个人最佳记录）
+    function showRanking() {
+        const modal = document.getElementById('rankingModal');
+        const content = document.getElementById('rankingContent');
+        const modes = ['number', 'hanzi', 'color', 'flash', 'word', 'memory'];
+        const modeNames = ['数字舒尔特', '汉字模式', '色彩干扰', '闪忆方格', '色彩识字', '数字记忆'];
+        let records = [];
+        modes.forEach((mode, idx) => {
+            for (let size = 5; size <= 9; size++) {
+                const key = 'schulte_' + mode + '_' + size;
+                const history = JSON.parse(localStorage.getItem(key) || '[]');
+                if (history.length > 0) {
+                    const best = mode === 'memory'
+                        ? Math.max(...history.map(h => h.time))
+                        : Math.min(...history.map(h => h.time));
+                    records.push({
+                        mode: modeNames[idx],
+                        size: size,
+                        time: best,
+                        date: history.find(h => h.time === best) ? history.find(h => h.time === best).date : ''
+                    });
+                }
+            }
+        });
+        records.sort((a, b) => a.time - b.time);
+        if (records.length === 0) {
+            content.innerHTML = '<p style="color:#aaa; text-align:center; padding:20px;">暂无记录，先去训练吧！</p>';
+        } else {
+            content.innerHTML = records.map((r, idx) => {
+                let posClass = idx === 0 ? 'gold' : idx === 1 ? 'silver' : idx === 2 ? 'bronze' : 'normal';
+                let medal = idx === 0 ? '\u26e1' : idx === 1 ? '\u26e2' : idx === 2 ? '\u26e3' : '';
+                return '<div class="rank-item">' +
+                    '<div class="rank-pos ' + posClass + '">' + (medal || (idx+1)) + '</div>' +
+                    '<div class="rank-info">' +
+                    '<div class="rank-mode">' + r.mode + ' ' + r.size + 'x' + r.size + '</div>' +
+                    '<div class="rank-detail">' + r.date + '</div>' +
+                    '</div>' +
+                    '<div class="rank-time">' + r.time + (mode === 'memory' ? '%' : 's') + '</div>' +
+                    '</div>';
+            }).join('');
+        }
+        modal.style.display = 'flex';
+    }
+
+    // 统计面板
+    function showStats() {
+        const modal = document.getElementById('statsModal');
+        const content = document.getElementById('statsContent');
+        const xpData = getXpData();
+        const checkInData = getCheckInData();
+        let totalGames = 0;
+        let totalAchieved = 0;
+        let totalXP = xpData.totalXP || 0;
+        const allHistory = [];
+        for (let i = 3; i <= 9; i++) {
+            ['number', 'hanzi', 'color', 'flash', 'word', 'memory'].forEach(mode => {
+                const key = 'schulte_' + mode + '_' + i;
+                const history = JSON.parse(localStorage.getItem(key) || '[]');
+                totalGames += history.length;
+                totalAchieved += history.filter(h => h.achieved).length;
+                allHistory.push(...history);
+            });
+        }
+        const checkInDays = Object.keys(checkInData).length;
+        let avgTime = 0;
+        if (allHistory.length > 0) {
+            const times = allHistory.filter(h => typeof h.time === 'number' && h.time < 1000).map(h => h.time);
+            if (times.length > 0) {
+                avgTime = (times.reduce((a,b) => a+b, 0) / times.length).toFixed(1);
+            }
+        }
+        const currentLevel = xpData.level || 1;
+        const currentTitle = levelConfig.find(l => l.level === currentLevel) ? levelConfig.find(l => l.level === currentLevel).title : '新手';
+        content.innerHTML =
+            '<div class="stats-grid">' +
+            '<div class="stat-card"><div class="stat-value">' + currentLevel + '</div><div class="stat-label">当前等级 (Lv.' + currentLevel + ' ' + currentTitle + ')</div></div>' +
+            '<div class="stat-card"><div class="stat-value">' + totalXP + '</div><div class="stat-label">总经验值 (XP)</div></div>' +
+            '<div class="stat-card"><div class="stat-value">' + totalGames + '</div><div class="stat-label">总训练次数</div></div>' +
+            '<div class="stat-card"><div class="stat-value">' + totalAchieved + '</div><div class="stat-label">达标次数</div></div>' +
+            '<div class="stat-card"><div class="stat-value">' + checkInDays + '</div><div class="stat-label">累计打卡天数</div></div>' +
+            '<div class="stat-card"><div class="stat-value">' + (totalGames > 0 ? Math.round(totalAchieved/totalGames*100) : 0) + '%</div><div class="stat-label">达标率</div></div>' +
+            '<div class="stat-card"><div class="stat-value">' + avgTime + 's</div><div class="stat-label">平均用时</div></div>' +
+            '<div class="stat-card"><div class="stat-value">' + currentTitle + '</div><div class="stat-label">当前称号</div></div>' +
+            '</div>';
+        modal.style.display = 'flex';
+    }
+
+    // 备份与恢复
+    function showBackup() {
+        document.getElementById('backupModal').style.display = 'flex';
+    }
+    function exportData() {
+        const exportObj = {
+            version: '2.0',
+            exportDate: new Date().toISOString(),
+            xpData: getXpData(),
+            checkInData: getCheckInData(),
+            records: {}
+        };
+        for (let i = 3; i <= 9; i++) {
+            ['number', 'hanzi', 'color', 'flash', 'word', 'memory'].forEach(mode => {
+                const key = 'schulte_' + mode + '_' + i;
+                const data = localStorage.getItem(key);
+                if (data) {
+                    exportObj.records[key] = JSON.parse(data);
+                }
+            });
+        }
+        const dateStr = new Date().toISOString().split('T')[0];
+        const fileName = '舒尔特方格备份_' + dateStr + '.json';
+        const blob = new Blob([JSON.stringify(exportObj, null, 2)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert('✅ 备份文件已导出！请妥善保管，建议定期备份。');
+    }
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (!data.version || data.version !== '2.0') {
+                    alert('❌ 文件格式不正确，请选择正确的备份文件。');
+                    return;
+                }
+                if (!confirm('⚠️ 导入将覆盖当前所有数据！\n\n当前数据将被备份文件的版本替换。\n是否继续？')) {
+                    return;
+                }
+                if (data.xpData) { saveXpData(data.xpData); }
+                if (data.checkInData) { localStorage.setItem('schulte_checkins', JSON.stringify(data.checkInData)); }
+                if (data.records) {
+                    for (const key in data.records) {
+                        localStorage.setItem(key, JSON.stringify(data.records[key]));
+                    }
+                }
+                initGame(currentMode);
+                renderCalendar();
+                updateLevelDisplay();
+                alert('✅ 数据恢复成功！所有训练记录已恢复。');
+                closeModal('backupModal');
+            } catch (err) {
+                alert('❌ 文件解析失败，请选择正确的备份文件。');
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+    function resetAllData() {
+        if (!confirm('⚠️ 确定要重置所有数据吗？\n\n这将删除：\n- 所有训练记录\n- 打卡记录\n- 等级和经验值\n- 最佳记录\n\n此操作不可撤销！建议先导出备份。')) {
+            return;
+        }
+        if (!confirm('再次确认：真的要删除所有数据吗？')) {
+            return;
+        }
+        localStorage.removeItem('schulte_xp');
+        localStorage.removeItem('schulte_checkins');
+        for (let i = 3; i <= 9; i++) {
+            ['number', 'hanzi', 'color', 'flash', 'word', 'memory'].forEach(mode => {
+                localStorage.removeItem('schulte_' + mode + '_' + i);
+            });
+        }
+        initGame(currentMode);
+        renderCalendar();
+        updateLevelDisplay();
+        closeModal('backupModal');
+        alert('✅ 所有数据已清除。');
+    }
+
+    // 弹窗关闭
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+    window.onclick = function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
+    }
+
+    // === QR code and text backup ===
+    let qrScannerInstance = null;
+    function getExportObject() {
+        return { version: '3.0', exportDate: new Date().toISOString(), xpData: getXpData(), checkInData: getCheckInData(), records: {} };
+    }
+    function generateQRCode() {
+        const obj = getExportObject();
+        for (let i = 3; i <= 9; i++) {
+            ['number','hanzi','color','flash','word','memory'].forEach(m => {
+                const k = 'schulte_' + m + '_' + i;
+                const d = localStorage.getItem(k);
+                if (d) obj.records[k] = JSON.parse(d);
+            });
+        }
+        const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+        const qrDiv = document.getElementById('qrcode');
+        qrDiv.innerHTML = '';
+        if (encoded.length > 1500) {
+            document.getElementById('qrDisplay').style.display = 'block';
+            qrDiv.innerHTML = '<p style="color:#f44336;font-size:13px;padding:20px;">Data too large for QR. Use file export or text backup.</p>';
+            return;
+        }
+        try {
+            new QRCode(qrDiv, { text: encoded, width: 200, height: 200, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+            document.getElementById('qrDisplay').style.display = 'block';
+            alert('QR code generated! Scan with another device to restore.');
+        } catch (err) {
+            alert('QR failed: ' + err.message + '. Use file or text backup.');
+        }
+    }
+    function startQRScanner() {
+        const sd = document.getElementById('qr-scanner');
+        sd.style.display = 'block';
+        if (qrScannerInstance) {
+            qrScannerInstance.stop().then(() => initScanner(sd)).catch(() => initScanner(sd));
+        } else { initScanner(sd); }
+    }
+    function initScanner(sd) {
+        qrScannerInstance = new Html5Qrcode("qr-scanner");
+        qrScannerInstance.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, onScanSuccess, onScanFailure).catch(err => {
+            alert('Cannot open camera: ' + err.message);
+            sd.style.display = 'none';
+        });
+    }
+    function onScanSuccess(decodedText) {
+        if (qrScannerInstance) {
+            qrScannerInstance.stop().then(() => {
+                qrScannerInstance.clear();
+                document.getElementById('qr-scanner').style.display = 'none';
+            }).catch(() => {});
+        }
+        try {
+            let js;
+            try { js = decodeURIComponent(escape(atob(decodedText))); } catch(e) { js = decodedText; }
+            const data = JSON.parse(js);
+            if (!data.version) { alert('Invalid QR content.'); return; }
+            if (!confirm('This will overwrite all current data! Continue?')) return;
+            restoreData(data);
+        } catch (err) { alert('Cannot parse QR code. Please scan a valid backup QR code.'); }
+    }
+    function onScanFailure() {}
+    function exportAsText() {
+        const obj = getExportObject();
+        for (let i = 3; i <= 9; i++) {
+            ['number','hanzi','color','flash','word','memory'].forEach(m => {
+                const k = 'schulte_' + m + '_' + i;
+                const d = localStorage.getItem(k);
+                if (d) obj.records[k] = JSON.parse(d);
+            });
+        }
+        const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+        document.getElementById('textBackupArea').value = encoded;
+        document.getElementById('textBackupDisplay').style.display = 'block';
+        copyTextBackup();
+    }
+    function copyTextBackup() {
+        const ta = document.getElementById('textBackupArea');
+        ta.select(); ta.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(ta.value).then(() => {
+            alert('Text backup copied! Share via WeChat/QQ/Email/SMS.');
+        }).catch(() => {
+            document.execCommand('copy');
+            alert('Text backup copied! Share via WeChat/QQ/Email/SMS.');
+        });
+    }
+    function importFromText() {
+        const encoded = document.getElementById('textImportArea').value.trim();
+        if (!encoded) { alert('Please paste the text backup data.'); return; }
+        try {
+            let js;
+            try { js = decodeURIComponent(escape(atob(encoded))); } catch(e) { js = encoded; }
+            const data = JSON.parse(js);
+            if (!data.version) { alert('Invalid text content.'); return; }
+            if (!confirm('This will overwrite all current data! Continue?')) return;
+            restoreData(data);
+        } catch (err) { alert('Parse failed: ' + err.message); }
+    }
+    function restoreData(data) {
+        try {
+            if (data.xpData) saveXpData(data.xpData);
+            if (data.checkInData) localStorage.setItem('schulte_checkins', JSON.stringify(data.checkInData));
+            if (data.records) {
+                for (const k in data.records) localStorage.setItem(k, JSON.stringify(data.records[k]));
+            }
+            initGame(currentMode); renderCalendar(); updateLevelDisplay();
+            alert('Data restored successfully!');
+            closeModal('backupModal');
+        } catch (err) { alert('Restore failed: ' + err.message); }
     }
 
     // 初始化
     initGame('number');
     renderCalendar();
+    updateLevelDisplay();
 </script>
 </body>
 </html>
