@@ -171,6 +171,11 @@ select{padding:7px 10px;border-radius:8px;border:1px solid #ddd;font-size:13px;c
 @keyframes floatAround{0%{transform:translate(0,0) rotate(0)}25%{transform:translate(30px,-20px) rotate(10deg)}50%{transform:translate(-20px,30px) rotate(-10deg)}75%{transform:translate(20px,20px) rotate(5deg)}100%{transform:translate(0,0) rotate(0)}}
 .reverse-mem-container{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:260px;width:100%;max-width:500px;background:#fff;border-radius:12px;box-shadow:var(--shadow);padding:14px}
 .reverse-mem-tip{font-size:12px;color:#e91e63;background:#fce4ec;padding:5px 10px;border-radius:6px;margin-bottom:10px}
+
+/* 改进2: 每日任务可点击项样式 */
+.daily-task.clickable{cursor:pointer;transition:all .2s;border-color:#FF9800}
+.daily-task.clickable:hover{background:#FFF3E0;border-color:#FF9800;transform:translateX(4px)}
+.daily-task.clickable:active{transform:scale(.98)}
 </style>
 <script>
 /* qrcodejs 1.0.0 - 离线内联 */
@@ -347,11 +352,104 @@ function migrateOldData(){
 let currentMode='number',gridSize=5,targetIndex=1,timerInterval=null,startTime=0,isPlaying=false,colorSubMode='char',goalAchieved=false,gridSequence=[],flashPhase='idle',flashTimeout=null,flashSeq=[],flashFound=0,flashErrors=0,numberErrors=0,grayStarted=false,chaosTargetSeq=[],distractAudioNode=null,distractInterval=null;
 // V9: 绿色反馈开关
 let greenFeedback = (localStorage.getItem('schulte_'+currentUser+'_green')||'on')==='on';
-const goalTimes={'number':30,'hanzi':40,'color':45,'flash':30,'chaos':30,'reverse':30,'colorDistract':50,'antiDistract':50};
+
+// ========== 改进1+5+6: 动态标准系统 ==========
+// 网上"非常好"水平基准（5x5）
+const excellentBase = {
+  number: 12, chaos: 15, reverse: 15, hanzi: 18, color: 20,
+  colorDistract: 25, antiDistract: 25, flash: 15, word: 30,
+  memory: 95, reverseMem: 95
+};
+// 初始标准（宽松，新手友好）
+const initialStandard = {
+  number: 30, chaos: 30, reverse: 30, hanzi: 40, color: 45,
+  colorDistract: 50, antiDistract: 50, flash: 30, word: 60,
+  memory: 80, reverseMem: 80
+};
+// 从初始降到非常好需要的训练次数（越大缩减越慢）
+const SHRINK_SESSIONS = 200;
+
+function getSizeMultiplier(size){ return Math.pow(1.3, size - 5); }
+
+function getExcellentTime(mode, size){
+  const base = excellentBase[mode] || 15;
+  if(mode === 'memory' || mode === 'reverseMem') return base; // 准确率模式不乘尺寸
+  return Math.round(base * getSizeMultiplier(size) * 10) / 10;
+}
+
+function getInitialTime(mode, size){
+  const base = initialStandard[mode] || 30;
+  if(mode === 'memory' || mode === 'reverseMem') return base;
+  return Math.round(base * getSizeMultiplier(size) * 10) / 10;
+}
+
+function getTrainingCount(mode, size){
+  const key = ukey('traincount_' + mode + '_' + size);
+  const data = JSON.parse(localStorage.getItem(key) || '{"count":0}');
+  return data.count || 0;
+}
+
+function incrementTrainingCount(mode, size){
+  const key = ukey('traincount_' + mode + '_' + size);
+  const data = JSON.parse(localStorage.getItem(key) || '{"count":0}');
+  data.count = (data.count || 0) + 1;
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+// 获取当前动态标准（根据训练次数慢慢缩减到非常好水平）
+function getDynamicStandard(mode, size){
+  const count = getTrainingCount(mode, size);
+  const initial = getInitialTime(mode, size);
+  const excellent = getExcellentTime(mode, size);
+  // 每训练一次，标准向excellent靠近 (initial-excellent)/SHRINK_SESSIONS
+  const reduction = (initial - excellent) * Math.min(count, SHRINK_SESSIONS) / SHRINK_SESSIONS;
+  const current = Math.max(excellent, initial - reduction);
+  return Math.round(current * 10) / 10;
+}
+
+// 兼容旧代码的goalTimes
+const goalTimes = initialStandard;
+
 const hanziList="天地玄黄宇宙洪荒日月盈昃辰宿列张寒来暑往秋收冬藏闰余成岁律吕调阳云腾致雨露结为霜金生丽水玉出昆冈剑号巨阙珠称夜光果珍李柰菜重芥姜海咸河淡鳞潜羽翔龙师火帝鸟官人皇始制文字乃服衣裳推位让国有虞陶唐吊民伐罪周发殷汤坐朝问道垂拱平章爱育黎首臣伏戎羌遐迩一体率宾归王".split('');
-const colorList=[{name:"红",hex:"#f44336"},{name:"蓝",hex:"#2196F3"},{name:"绿",hex:"#4CAF50"},{name:"黄",hex:"#FFEB3B"},{name:"紫",hex:"#9C27B0"},{name:"橙",hex:"#FF9800"},{name:"粉",hex:"#E91E63"},{name:"青",hex:"#00BCD4"},{name:"棕",hex:"#795548"},{name:"灰",hex:"#607D8B"},{name:"黑",hex:"#333"},{name:"白",hex:"#FFF"}];
+// 改进3: 色彩训练中排除白色，避免白字与背景融合
+const colorList=[{name:"红",hex:"#f44336"},{name:"蓝",hex:"#2196F3"},{name:"绿",hex:"#4CAF50"},{name:"黄",hex:"#FFEB3B"},{name:"紫",hex:"#9C27B0"},{name:"橙",hex:"#FF9800"},{name:"粉",hex:"#E91E63"},{name:"青",hex:"#00BCD4"},{name:"棕",hex:"#795548"},{name:"灰",hex:"#607D8B"},{name:"黑",hex:"#333"}];
 const distractBgColors=['#E53935','#1E88E5','#43A047','#FDD835','#8E24AA','#FB8C00','#D81B60','#00ACC1','#6D4C41','#546E7A','#00897B','#C0CA33'];
-const levelConfig=[{level:1,title:"训练新手",xpNeeded:0},{level:2,title:"初出茅庐",xpNeeded:30},{level:3,title:"渐入佳境",xpNeeded:80},{level:4,title:"专注学徒",xpNeeded:150},{level:5,title:"专注高手",xpNeeded:240},{level:6,title:"眼疾手快",xpNeeded:350},{level:7,title:"舒尔特大师",xpNeeded:480},{level:8,title:"记忆之王",xpNeeded:630},{level:9,title:"传奇训练家",xpNeeded:800},{level:10,title:"专注之神",xpNeeded:1000},{level:11,title:"超凡入圣",xpNeeded:1250},{level:12,title:"心如止水",xpNeeded:1550},{level:13,title:"万象归一",xpNeeded:1900},{level:14,title:"不朽传说",xpNeeded:2300},{level:15,title:"永恒专注",xpNeeded:2800}];
+
+// ========== 改进1: 扩展经验值系统 ==========
+// 30级，最高需要50000 XP，升级速度大幅放缓
+const levelConfig=[
+  {level:1,title:"训练新手",xpNeeded:0},
+  {level:2,title:"初出茅庐",xpNeeded:50},
+  {level:3,title:"渐入佳境",xpNeeded:120},
+  {level:4,title:"专注学徒",xpNeeded:220},
+  {level:5,title:"专注高手",xpNeeded:350},
+  {level:6,title:"眼疾手快",xpNeeded:520},
+  {level:7,title:"舒尔特大师",xpNeeded:730},
+  {level:8,title:"记忆之王",xpNeeded:980},
+  {level:9,title:"传奇训练家",xpNeeded:1280},
+  {level:10,title:"专注之神",xpNeeded:1630},
+  {level:11,title:"超凡入圣",xpNeeded:2030},
+  {level:12,title:"心如止水",xpNeeded:2480},
+  {level:13,title:"万象归一",xpNeeded:2980},
+  {level:14,title:"不朽传说",xpNeeded:3530},
+  {level:15,title:"永恒专注",xpNeeded:4130},
+  {level:16,title:"凝神境",xpNeeded:4780},
+  {level:17,title:"通玄境",xpNeeded:5480},
+  {level:18,title:"御灵境",xpNeeded:6230},
+  {level:19,title:"破虚境",xpNeeded:7030},
+  {level:20,title:"破空境",xpNeeded:7880},
+  {level:21,title:"涅槃境",xpNeeded:8780},
+  {level:22,title:"不灭境",xpNeeded:9730},
+  {level:23,title:"轮回境",xpNeeded:10730},
+  {level:24,title:"造化境",xpNeeded:11780},
+  {level:25,title:"鸿蒙境",xpNeeded:12880},
+  {level:26,title:"混沌境",xpNeeded:14030},
+  {level:27,title:"太初境",xpNeeded:15230},
+  {level:28,title:"太极境",xpNeeded:16480},
+  {level:29,title:"无极境",xpNeeded:17780},
+  {level:30,title:"至高无上",xpNeeded:19130}
+];
+
 let audioCtx=null,soundOn=localStorage.getItem(ukey('sound'))!=='off';
 function ensureAudio(){if(!soundOn)return null;try{if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();return audioCtx}catch(e){return null}}
 function tone(ctx,freq,when,dur,type,vol){const o=ctx.createOscillator(),g=ctx.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(.0001,when);g.gain.exponentialRampToValueAtTime(vol,when+.02);g.gain.exponentialRampToValueAtTime(.0001,when+dur);o.connect(g);g.connect(ctx.destination);o.start(when);o.stop(when+dur+.05)}
@@ -360,9 +458,9 @@ function playBuzz(){const ctx=ensureAudio();if(!ctx)return;const t=ctx.currentTi
 function playGolden(){const ctx=ensureAudio();if(!ctx)return;const t=ctx.currentTime;[523,659,784,1047,1319].forEach((f,i)=>tone(ctx,f,t+i*.09,.3,'triangle',.4));tone(ctx,1568,t+.45,.5,'sine',.35)}
 function toggleSound(){soundOn=!soundOn;localStorage.setItem(ukey('sound'),soundOn?'on':'off');updateSoundBtn();if(soundOn)playDing()}
 function updateSoundBtn(){const b=document.getElementById('soundToggleBtn');if(b){b.innerText=soundOn?'🔊 音效:开':'🔇 音效:关';b.className=soundOn?'btn-sound-on':'btn-sound-off'}}
-// V9: 绿色反馈开关
+// 改进4: 绿色反馈开关覆盖所有游戏模式
 function toggleGreenFeedback(){greenFeedback=!greenFeedback;localStorage.setItem(ukey('green'),greenFeedback?'on':'off');updateGreenBtn();}
-function updateGreenBtn(){const b=document.getElementById('greenToggleBtn');if(b){b.innerText=greenFeedback?'🟢 绿色反馈:开':'⚪ 绿色反馈:关';b.className=greenFeedback?'btn-green-on':'btn-green-off';b.title=greenFeedback?'开启：乱序/倒序正确格子变绿色':'关闭：乱序/倒序点击无绿色高亮'}}
+function updateGreenBtn(){const b=document.getElementById('greenToggleBtn');if(b){b.innerText=greenFeedback?'🟢 绿色反馈:开':'⚪ 绿色反馈:关';b.className=greenFeedback?'btn-green-on':'btn-green-off';b.title=greenFeedback?'开启：所有模式正确格子变绿色':'关闭：所有模式点击无绿色高亮'}}
 function shuffleArr(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function localDateStr(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function initGame(mode,fromDaily){
@@ -427,7 +525,7 @@ flashTimeout=setTimeout(()=>{cell.classList.remove('flash-on');step++;flashTimeo
 };
 flashTimeout=setTimeout(playStep,600);
 }
-function handleFlashClick(cell){const idx=Number(cell.dataset.index);if(idx===flashSeq[flashFound]){cell.classList.add('correct');flashFound++;updateFlashProgress();if(flashFound>=flashSeq.length)finishGame()}else{flashErrors++;playBuzz();cell.classList.add('wrong');setTimeout(()=>cell.classList.remove('wrong'),300)}}
+function handleFlashClick(cell){const idx=Number(cell.dataset.index);if(idx===flashSeq[flashFound]){if(greenFeedback)cell.classList.add('correct');else cell.classList.add('done');flashFound++;updateFlashProgress();if(flashFound>=flashSeq.length)finishGame()}else{flashErrors++;playBuzz();cell.classList.add('wrong');setTimeout(()=>cell.classList.remove('wrong'),300)}}
 function handleClick(cell){
 const grayModes=['number','hanzi','color','flash','chaos','reverse','colorDistract','antiDistract'];
 if(grayModes.includes(currentMode)&&!grayStarted){revealGrayGrid();return}
@@ -435,30 +533,43 @@ if(cell.classList.contains('correct')||cell.classList.contains('golden')||cell.c
 if(currentMode==='flash'&&flashPhase!=='recall')return;
 if(!isPlaying){isPlaying=true;startTime=Date.now();timerInterval=setInterval(()=>{document.getElementById('timer').innerText=((Date.now()-startTime)/1000).toFixed(1)},100);if(currentMode==='antiDistract')startDistraction()}
 if(currentMode==='flash'){handleFlashClick(cell);return}
+// 改进4: 所有模式的正确反馈都受greenFeedback开关控制
 const silentModes=['number','colorDistract','antiDistract'];
-if(silentModes.includes(currentMode)){if(cell.dataset.value==targetIndex){cell.classList.add('done');targetIndex++;if(targetIndex>gridSize*gridSize)finishGame();else updateTarget()}else{numberErrors++;playBuzz()}return}
-// V9: 乱序/倒序 绿色反馈受开关控制
+if(silentModes.includes(currentMode)){if(cell.dataset.value==targetIndex){if(greenFeedback)cell.classList.add('correct');else cell.classList.add('done');targetIndex++;if(targetIndex>gridSize*gridSize)finishGame();else updateTarget()}else{numberErrors++;playBuzz()}return}
 if(currentMode==='chaos'){const expected=chaosTargetSeq[targetIndex-1];if(cell.dataset.value==expected){if(greenFeedback)cell.classList.add('correct');else cell.classList.add('done');targetIndex++;if(targetIndex>gridSize*gridSize)finishGame();else updateTarget()}else{numberErrors++;playBuzz();cell.classList.add('wrong');setTimeout(()=>cell.classList.remove('wrong'),300)}return}
 if(currentMode==='reverse'){if(cell.dataset.value==targetIndex){if(greenFeedback)cell.classList.add('correct');else cell.classList.add('done');targetIndex--;if(targetIndex<1)finishGame();else updateTarget()}else{numberErrors++;playBuzz();cell.classList.add('wrong');setTimeout(()=>cell.classList.remove('wrong'),300)}return}
 let isCorrect=false;
 if(currentMode==='color'){if(colorSubMode==='char')isCorrect=(cell.dataset.char===getTargetValue());else isCorrect=(cell.dataset.color===getTargetValue())}
 else isCorrect=(cell.dataset.value==getTargetValue());
-if(isCorrect){cell.classList.remove('blank');cell.classList.add('correct');targetIndex++;if(targetIndex>gridSize*gridSize)finishGame();else updateTarget()}
+if(isCorrect){cell.classList.remove('blank');if(greenFeedback)cell.classList.add('correct');else cell.classList.add('done');targetIndex++;if(targetIndex>gridSize*gridSize)finishGame();else updateTarget()}
 else{playBuzz();cell.classList.add('wrong');setTimeout(()=>cell.classList.remove('wrong'),300)}
 }
+// 改进5+6: finishGame使用动态标准，金色仅在达到非常好水平时触发
 function finishGame(){
 clearInterval(timerInterval);stopDistraction();
 const finalTime=parseFloat(document.getElementById('timer').innerText);
-const standardGoal=goalTimes[currentMode]||30;const sizeMultiplier=Math.pow(1.5,gridSize-5);const goalTime=Math.round(standardGoal*sizeMultiplier);
-const achieved=finalTime<=goalTime;goalAchieved=achieved;
-if(achieved){document.querySelectorAll('.cell').forEach(c=>{c.classList.remove('correct');c.classList.add('golden')});document.getElementById('goalBanner').style.display='block'}
-saveRecord(finalTime,achieved);addXP(achieved?15:6);updateBestRecord();checkInToday();updateLevelDisplay();
-if(achieved)playGolden();else playDing();
-if(dailyActive&&dailyTaskIdx>=0){recordDailyResult(finalTime,achieved);return}
+const dynamicStd = getDynamicStandard(currentMode, gridSize);
+const excellentTime = getExcellentTime(currentMode, gridSize);
+const achieved = finalTime <= dynamicStd;
+const isExcellent = finalTime <= excellentTime;
+goalAchieved = achieved;
+// 改进6: 只有达到非常好水平才变金色
+if(isExcellent){document.querySelectorAll('.cell').forEach(c=>{c.classList.remove('correct','done');c.classList.add('golden')});document.getElementById('goalBanner').style.display='block'}
+saveRecord(finalTime,achieved);
+incrementTrainingCount(currentMode, gridSize);
+// 改进1: XP获取放缓 - 达标+10，非常好+15，未达标+4
+const xpGain = isExcellent ? 15 : (achieved ? 10 : 4);
+addXP(xpGain);
+updateBestRecord();checkInToday();updateLevelDisplay();
+// 改进6: 金色音效仅在非常好时播放
+if(isExcellent)playGolden();else playDing();
+if(dailyActive&&dailyTaskIdx>=0){recordDailyResult(finalTime,achieved,isExcellent);return}
 let msg='🎉 完成！\n模式: '+getModeDisplayName()+' '+gridSize+'x'+gridSize+'\n用时: '+finalTime+'s';
 if(['number','chaos','reverse','colorDistract','antiDistract'].includes(currentMode))msg+='\n点错: '+numberErrors+'次';
 if(currentMode==='flash')msg+='\n点错: '+flashErrors+'次';
-if(achieved)msg+='\n🏆 达标！\n✨ +15 XP';else msg+='\n标准: '+goalTime+'s\n✨ +6 XP';
+if(isExcellent)msg+='\n🌟 非常好！达到顶尖水平！\n✨ +'+xpGain+' XP';
+else if(achieved)msg+='\n✅ 达标！\n当前标准: '+dynamicStd+'s\n非常好: '+excellentTime+'s\n✨ +'+xpGain+' XP';
+else msg+='\n当前标准: '+dynamicStd+'s\n非常好: '+excellentTime+'s\n✨ +'+xpGain+' XP';
 alert(msg);
 }
 function getTargetValue(){if(['number','flash','colorDistract','antiDistract'].includes(currentMode))return targetIndex;if(currentMode==='chaos')return chaosTargetSeq[targetIndex-1];if(currentMode==='reverse')return targetIndex;if(['hanzi','color'].includes(currentMode))return gridSequence[targetIndex-1]}
@@ -471,10 +582,24 @@ if(currentMode==='color'){if(colorSubMode==='char'){const name=gridSequence[targ
 else el.innerText=getTargetValue();
 }
 let wordSequence=[],currentWordIndex=0;
+// 改进3: 色彩识字 - 确保字体颜色不会是白色（已从colorList移除白色）
 function initWordMode(){document.getElementById('grid').style.display='none';document.getElementById('colorWordContainer').style.display='flex';wordSequence=[];currentWordIndex=0;for(let i=0;i<25;i++){const co=colorList[i%colorList.length];let fc;do{fc=colorList[Math.floor(Math.random()*colorList.length)]}while(fc.name===co.name);wordSequence.push({text:co.name,color:fc.hex})}showCurrentWord();isPlaying=true;startTime=Date.now();timerInterval=setInterval(()=>{document.getElementById('timer').innerText=((Date.now()-startTime)/1000).toFixed(1)},100)}
-function showCurrentWord(){if(currentWordIndex<wordSequence.length){const w=wordSequence[currentWordIndex];document.getElementById('colorWordDisplay').innerText=w.text;document.getElementById('colorWordDisplay').style.color=w.color;document.getElementById('target').innerText='第 '+(currentWordIndex+1)+'/25 题'}else finishWordMode()}
+function showCurrentWord(){if(currentWordIndex<wordSequence.length){const w=wordSequence[currentWordIndex];document.getElementById('colorWordDisplay').innerText=w.text;document.getElementById('colorWordDisplay').style.color=w.color;document.getElementById('colorWordDisplay').style.textShadow='0 0 3px rgba(0,0,0,0.3), 1px 1px 2px rgba(0,0,0,0.5)';document.getElementById('target').innerText='第 '+(currentWordIndex+1)+'/25 题'}else finishWordMode()}
 function nextColorWord(){currentWordIndex++;if(currentWordIndex>=wordSequence.length)finishWordMode();else showCurrentWord()}
-function finishWordMode(){clearInterval(timerInterval);isPlaying=false;const ft=parseFloat(document.getElementById('timer').innerText);const achieved=ft<=60;saveRecord(ft,achieved);addXP(achieved?15:6);updateBestRecord();checkInToday();updateLevelDisplay();if(achieved)playGolden();else playDing();if(dailyActive&&dailyTaskIdx>=0){recordDailyResult(ft,achieved);return}alert('🎉 色彩识字完成！\n用时: '+ft+'s\n共25题'+(achieved?'\n🏆 达标！\n✨ +15 XP':'\n标准: 60秒\n✨ +6 XP'))}
+// 改进5+6: 色彩识字也使用动态标准
+function finishWordMode(){clearInterval(timerInterval);isPlaying=false;const ft=parseFloat(document.getElementById('timer').innerText);
+const dynamicStd = getDynamicStandard('word', 5);
+const excellentTime = getExcellentTime('word', 5);
+const achieved = ft <= dynamicStd;
+const isExcellent = ft <= excellentTime;
+saveRecord(ft,achieved);
+incrementTrainingCount('word', 5);
+const xpGain = isExcellent ? 15 : (achieved ? 10 : 4);
+addXP(xpGain);
+updateBestRecord();checkInToday();updateLevelDisplay();
+if(isExcellent)playGolden();else playDing();
+if(dailyActive&&dailyTaskIdx>=0){recordDailyResult(ft,achieved,isExcellent);return}
+alert('🎉 色彩识字完成！\n用时: '+ft+'s\n共25题'+(isExcellent?'\n🌟 非常好！顶尖水平！':'\n✅ 达标！当前标准: '+dynamicStd+'s 非常好: '+excellentTime+'s')+'\n✨ +'+xpGain+' XP')}
 function startDistraction(){const layer=document.getElementById('distractLayer');layer.classList.add('active');const sym=['7','3','9','★','●','▲','◆','5','2','8','✦','■'];const col=['#E53935','#1E88E5','#8E24AA','#FB8C00','#00ACC1','#43A047'];distractInterval=setInterval(()=>{if(layer.children.length>12)return;const it=document.createElement('div');it.className='distract-item';it.innerText=sym[Math.floor(Math.random()*sym.length)];it.style.color=col[Math.floor(Math.random()*col.length)];it.style.left=Math.random()*80+'%';it.style.top=Math.random()*80+'%';it.style.animationDuration=(3+Math.random()*4)+'s';it.style.fontSize=(22+Math.random()*28)+'px';layer.appendChild(it);setTimeout(()=>{if(it.parentNode)it.parentNode.removeChild(it)},5000)},800);const ctx=ensureAudio();if(ctx){const bs=ctx.sampleRate*2;const buf=ctx.createBuffer(1,bs,ctx.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<bs;i++)d[i]=(Math.random()*2-1)*.08;const src=ctx.createBufferSource();src.buffer=buf;src.loop=true;const g=ctx.createGain();g.gain.value=.15;src.connect(g);g.connect(ctx.destination);src.start();distractAudioNode=src}}
 function stopDistraction(){const layer=document.getElementById('distractLayer');if(layer){layer.classList.remove('active');layer.innerHTML=''}if(distractInterval){clearInterval(distractInterval);distractInterval=null}if(distractAudioNode){try{distractAudioNode.stop()}catch(e){}distractAudioNode=null}}
 let memoryNumbers=[],memoryPhase='idle',memoryPlayToken=0,zhVoice=null,memoryPlayMode='voice';
@@ -488,14 +613,40 @@ function startMemoryGame(){if(memoryPlayMode==='voice'&&!('speechSynthesis' in w
 function playMemoryNumber(i,token){if(token!==memoryPlayToken||memoryPhase!=='listening')return;if(i>=memoryNumbers.length){startRecallPhase();return}const iv=(memoryPlayMode==='visual');document.getElementById('memoryInstruction').innerText=(iv?'请看屏幕… 第':'请认真听… 第')+(i+1)+'/'+memoryNumbers.length+' 个数字';let adv=false;const gn=()=>{if(token!==memoryPlayToken||adv)return;adv=true;setTimeout(()=>playMemoryNumber(i+1,token),350)};if(iv){const dp=document.getElementById('memoryDisplay');dp.style.display='flex';dp.innerText=String(memoryNumbers[i]);setTimeout(()=>{if(token===memoryPlayToken)dp.innerText=''},850);setTimeout(gn,1200);return}try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(String(memoryNumbers[i]));u.lang='zh-CN';u.rate=1.1;u.volume=1;try{if(zhVoice)u.voice=zhVoice}catch(e){}u.onend=gn;u.onerror=gn;speechSynthesis.speak(u)}catch(e){}setTimeout(gn,2200)}
 function replayMemory(){if(memoryPhase!=='listening')return;if(memoryPlayMode==='voice'){try{speechSynthesis.cancel()}catch(e){}}memoryPlayToken++;playMemoryNumber(0,memoryPlayToken)}
 function startRecallPhase(){memoryPhase='counting';document.getElementById('memoryReplayBtn').style.display='none';document.getElementById('memoryDisplay').style.display='none';document.getElementById('memoryDisplay').innerText='';let cd=5;document.getElementById('memoryInstruction').innerText='请在 '+cd+' 秒后输入你记住的数字';const ci=setInterval(()=>{cd--;if(cd>0)document.getElementById('memoryInstruction').innerText='请在 '+cd+' 秒后输入你记住的数字';else{clearInterval(ci);memoryPhase='recalling';document.getElementById('memoryInstruction').innerText='请输入记住的'+memoryNumbers.length+'个数字（空格分隔）';document.getElementById('memoryInput').style.display='block';document.getElementById('memorySubmitBtn').style.display='inline-block';document.getElementById('memoryInput').focus();clearInterval(timerInterval);startTime=Date.now();document.getElementById('timer').innerText='0.0';timerInterval=setInterval(()=>{document.getElementById('timer').innerText=((Date.now()-startTime)/1000).toFixed(1)},100)}},1000)}
-function checkMemory(){const input=document.getElementById('memoryInput').value.trim();if(!input)return;clearInterval(timerInterval);const at=parseFloat(((Date.now()-startTime)/1000).toFixed(1));const un=input.split(/\s+/).map(Number).filter(n=>!isNaN(n));let correct=0;for(let i=0;i<Math.min(memoryNumbers.length,un.length);i++)if(un[i]===memoryNumbers[i])correct++;const acc=Math.round((correct/memoryNumbers.length)*100);const achieved=acc>=80;saveRecord(acc,achieved,at);addXP(achieved?15:6);updateBestRecord();checkInToday();updateLevelDisplay();if(achieved)playGolden();else playDing();alert('📝 结果：\n正确: '+correct+'/'+memoryNumbers.length+'\n准确率: '+acc+'%\n答题用时: '+at+'s\n\n正确答案: '+memoryNumbers.join(' ')+(achieved?'\n🏆 达标！\n✨ +15 XP':'\n标准: 80%\n✨ +6 XP'));memoryPhase='idle';document.getElementById('memoryInstruction').innerText='点击"开始训练"，听数字并复述';document.getElementById('memoryInput').style.display='none';document.getElementById('memoryStartBtn').style.display='inline-block';document.getElementById('memoryReplayBtn').style.display='none';document.getElementById('memorySubmitBtn').style.display='none';document.getElementById('memoryInput').value='';document.getElementById('memoryDisplay').style.display='none';document.getElementById('memoryDisplay').innerText=''}
+// 改进5+6: 数字记忆使用动态标准（准确率模式）
+function checkMemory(){const input=document.getElementById('memoryInput').value.trim();if(!input)return;clearInterval(timerInterval);const at=parseFloat(((Date.now()-startTime)/1000).toFixed(1));const un=input.split(/\s+/).map(Number).filter(n=>!isNaN(n));let correct=0;for(let i=0;i<Math.min(memoryNumbers.length,un.length);i++)if(un[i]===memoryNumbers[i])correct++;const acc=Math.round((correct/memoryNumbers.length)*100);
+const dynamicStd = getDynamicStandard('memory', 5);
+const excellentTime = getExcellentTime('memory', 5);
+const achieved = acc >= dynamicStd;
+const isExcellent = acc >= excellentTime;
+saveRecord(acc,achieved,at);
+incrementTrainingCount('memory', 5);
+const xpGain = isExcellent ? 15 : (achieved ? 10 : 4);
+addXP(xpGain);
+updateBestRecord();checkInToday();updateLevelDisplay();
+if(isExcellent)playGolden();else playDing();
+alert('📝 结果：\n正确: '+correct+'/'+memoryNumbers.length+'\n准确率: '+acc+'%\n答题用时: '+at+'s\n\n正确答案: '+memoryNumbers.join(' ')+(isExcellent?'\n🌟 非常好！顶尖水平！':'\n✅ 达标！当前标准: '+dynamicStd+'% 非常好: '+excellentTime+'%')+'\n✨ +'+xpGain+' XP');
+memoryPhase='idle';document.getElementById('memoryInstruction').innerText='点击"开始训练"，听数字并复述';document.getElementById('memoryInput').style.display='none';document.getElementById('memoryStartBtn').style.display='inline-block';document.getElementById('memoryReplayBtn').style.display='none';document.getElementById('memorySubmitBtn').style.display='none';document.getElementById('memoryInput').value='';document.getElementById('memoryDisplay').style.display='none';document.getElementById('memoryDisplay').innerText=''}
 let revMemNumbers=[],revMemPhase='idle',revMemPlayToken=0;
 function initReverseMemMode(){document.getElementById('grid').style.display='none';document.getElementById('reverseMemContainer').style.display='flex';document.getElementById('reverseMemInput').style.display='none';document.getElementById('reverseMemStartBtn').style.display='inline-block';document.getElementById('reverseMemReplayBtn').style.display='none';document.getElementById('reverseMemSubmitBtn').style.display='none';document.getElementById('reverseMemInput').value='';document.getElementById('reverseMemDisplay').style.display='none';document.getElementById('reverseMemDisplay').innerText='';revMemPhase='idle';if(!('speechSynthesis' in window)){document.getElementById('reverseMemInstruction').innerText='⚠️ 浏览器不支持语音，请用Chrome/Edge';document.getElementById('reverseMemStartBtn').disabled=true}else{document.getElementById('reverseMemInstruction').innerText='点击开始，听数字后倒序输入';document.getElementById('reverseMemStartBtn').disabled=false}}
 function startReverseMemGame(){try{speechSynthesis.cancel();speechSynthesis.resume()}catch(e){}revMemPhase='listening';document.getElementById('reverseMemInstruction').innerText='正在准备语音…';document.getElementById('reverseMemStartBtn').style.display='none';document.getElementById('reverseMemReplayBtn').style.display='inline-block';document.getElementById('reverseMemSubmitBtn').style.display='none';const dc=parseInt(document.getElementById('revMemDigitCount').value),nc=parseInt(document.getElementById('revMemNumCount').value);revMemNumbers=genMemoryNumbers(dc,nc,'all');revMemPlayToken++;const token=revMemPlayToken;ensureVoicesThen(()=>playRevMemNumber(0,token))}
 function playRevMemNumber(i,token){if(token!==revMemPlayToken||revMemPhase!=='listening')return;if(i>=revMemNumbers.length){startRevMemRecallPhase();return}document.getElementById('reverseMemInstruction').innerText='请认真听… 第 '+(i+1)+'/'+revMemNumbers.length+' 个数字';let adv=false;const gn=()=>{if(token!==revMemPlayToken||adv)return;adv=true;setTimeout(()=>playRevMemNumber(i+1,token),400)};try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(String(revMemNumbers[i]));u.lang='zh-CN';u.rate=1.0;u.volume=1;try{if(zhVoice)u.voice=zhVoice}catch(e){}u.onend=gn;u.onerror=gn;speechSynthesis.speak(u)}catch(e){}setTimeout(gn,2500)}
 function replayReverseMem(){if(revMemPhase!=='listening')return;try{speechSynthesis.cancel()}catch(e){}revMemPlayToken++;playRevMemNumber(0,revMemPlayToken)}
 function startRevMemRecallPhase(){revMemPhase='counting';document.getElementById('reverseMemReplayBtn').style.display='none';let cd=5;document.getElementById('reverseMemInstruction').innerText='倒序输入！'+cd+'秒后开始';const ci=setInterval(()=>{cd--;if(cd>0)document.getElementById('reverseMemInstruction').innerText='倒序输入！'+cd+'秒后开始';else{clearInterval(ci);revMemPhase='recalling';document.getElementById('reverseMemInstruction').innerText='🔄 从最后一个数字开始倒着输入（空格分隔）';document.getElementById('reverseMemInput').style.display='block';document.getElementById('reverseMemSubmitBtn').style.display='inline-block';document.getElementById('reverseMemInput').focus();clearInterval(timerInterval);startTime=Date.now();document.getElementById('timer').innerText='0.0';timerInterval=setInterval(()=>{document.getElementById('timer').innerText=((Date.now()-startTime)/1000).toFixed(1)},100)}},1000)}
-function checkReverseMem(){const input=document.getElementById('reverseMemInput').value.trim();if(!input)return;clearInterval(timerInterval);const at=parseFloat(((Date.now()-startTime)/1000).toFixed(1));const un=input.split(/\s+/).map(Number).filter(n=>!isNaN(n));const ca=revMemNumbers.slice().reverse();let correct=0;for(let i=0;i<Math.min(ca.length,un.length);i++)if(un[i]===ca[i])correct++;const acc=Math.round((correct/ca.length)*100);const achieved=acc>=80;saveRecord(acc,achieved,at);addXP(achieved?15:6);updateBestRecord();checkInToday();updateLevelDisplay();if(achieved)playGolden();else playDing();alert('🔄 倒背结果：\n正确: '+correct+'/'+ca.length+'\n准确率: '+acc+'%\n答题用时: '+at+'s\n\n原序列: '+revMemNumbers.join(' ')+'\n倒序答案: '+ca.join(' ')+(achieved?'\n🏆 达标！\n✨ +15 XP':'\n标准: 80%\n✨ +6 XP'));revMemPhase='idle';document.getElementById('reverseMemInstruction').innerText='点击开始，听数字后倒序输入';document.getElementById('reverseMemInput').style.display='none';document.getElementById('reverseMemStartBtn').style.display='inline-block';document.getElementById('reverseMemReplayBtn').style.display='none';document.getElementById('reverseMemSubmitBtn').style.display='none';document.getElementById('reverseMemInput').value=''}
+// 改进5+6: 听数倒背使用动态标准
+function checkReverseMem(){const input=document.getElementById('reverseMemInput').value.trim();if(!input)return;clearInterval(timerInterval);const at=parseFloat(((Date.now()-startTime)/1000).toFixed(1));const un=input.split(/\s+/).map(Number).filter(n=>!isNaN(n));const ca=revMemNumbers.slice().reverse();let correct=0;for(let i=0;i<Math.min(ca.length,un.length);i++)if(un[i]===ca[i])correct++;const acc=Math.round((correct/ca.length)*100);
+const dynamicStd = getDynamicStandard('reverseMem', 5);
+const excellentTime = getExcellentTime('reverseMem', 5);
+const achieved = acc >= dynamicStd;
+const isExcellent = acc >= excellentTime;
+saveRecord(acc,achieved,at);
+incrementTrainingCount('reverseMem', 5);
+const xpGain = isExcellent ? 15 : (achieved ? 10 : 4);
+addXP(xpGain);
+updateBestRecord();checkInToday();updateLevelDisplay();
+if(isExcellent)playGolden();else playDing();
+alert('🔄 倒背结果：\n正确: '+correct+'/'+ca.length+'\n准确率: '+acc+'%\n答题用时: '+at+'s\n\n原序列: '+revMemNumbers.join(' ')+'\n倒序答案: '+ca.join(' ')+(isExcellent?'\n🌟 非常好！顶尖水平！':'\n✅ 达标！当前标准: '+dynamicStd+'% 非常好: '+excellentTime+'%')+'\n✨ +'+xpGain+' XP');
+revMemPhase='idle';document.getElementById('reverseMemInstruction').innerText='点击开始，听数字后倒序输入';document.getElementById('reverseMemInput').style.display='none';document.getElementById('reverseMemStartBtn').style.display='inline-block';document.getElementById('reverseMemReplayBtn').style.display='none';document.getElementById('reverseMemSubmitBtn').style.display='none';document.getElementById('reverseMemInput').value=''}
 function getCheckInData(){return JSON.parse(localStorage.getItem(ukey('checkins'))||'{}')}
 function checkInToday(){const today=localDateStr(new Date());const data=getCheckInData();data[today]=true;localStorage.setItem(ukey('checkins'),JSON.stringify(data));renderCalendar()}
 function renderCalendar(){const grid=document.getElementById('calendarGrid');grid.innerHTML='';['日','一','二','三','四','五','六'].forEach(d=>{const div=document.createElement('div');div.className='day-header';div.innerText=d;grid.appendChild(div)});const today=new Date(),year=today.getFullYear(),month=today.getMonth();const fd=new Date(year,month,1).getDay(),dm=new Date(year,month+1,0).getDate();const cid=getCheckInData(),ts=localDateStr(today);for(let i=0;i<fd;i++){const div=document.createElement('div');div.className='day';grid.appendChild(div)}for(let d=1;d<=dm;d++){const ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');const div=document.createElement('div');div.className='day';div.innerText=d;if(cid[ds])div.classList.add('checked');if(ds===ts)div.classList.add('today');grid.appendChild(div)}let streak=0,cd2=new Date();if(!cid[localDateStr(cd2)])cd2.setDate(cd2.getDate()-1);while(true){const ds=localDateStr(cd2);if(cid[ds]){streak++;cd2.setDate(cd2.getDate()-1)}else break}document.getElementById('streakDisplay').innerText='🔥 '+streak+'天'}
@@ -509,32 +660,38 @@ function getXpData(){return JSON.parse(localStorage.getItem(ukey('xp'))||'{"tota
 function saveXpData(d){localStorage.setItem(ukey('xp'),JSON.stringify(d))}
 function addXP(amt){const x=getXpData();x.totalXP=(x.totalXP||0)+amt;let nl=x.level||1;for(let i=levelConfig.length-1;i>=0;i--)if(x.totalXP>=levelConfig[i].xpNeeded){nl=levelConfig[i].level;break}if(nl>x.level){x.level=nl;setTimeout(()=>{const t=levelConfig.find(l=>l.level===nl).title;alert('🎉 升级！你现在是 '+t+' (Lv.'+nl+')！')},500)}saveXpData(x);updateLevelDisplay()}
 function updateLevelDisplay(){const x=getXpData();const tx=x.totalXP||0,cl=x.level||1;const cc=levelConfig.find(l=>l.level===cl)||levelConfig[0],nc=levelConfig.find(l=>l.level===cl+1);const xil=tx-cc.xpNeeded,xnf=nc?nc.xpNeeded-cc.xpNeeded:1;const p=nc?Math.min(100,(xil/xnf)*100):100;document.getElementById('levelBadge').innerText=cl;document.getElementById('levelTitle').innerText=cc.title;document.getElementById('xpFill').style.width=p+'%';document.getElementById('xpText').innerText=nc?xil+' / '+xnf+' XP':'已满级！'}
-function showLevelInfo(){const x=getXpData();const tx=x.totalXP||0,cl=x.level||1;const cc=levelConfig.find(l=>l.level===cl)||levelConfig[0],nc=levelConfig.find(l=>l.level===cl+1),mc=levelConfig[levelConfig.length-1];let h='<div style="text-align:left">';h+='<div class="stats-grid" style="margin-bottom:8px"><div class="stat-card"><div class="stat-value">Lv.'+cl+'</div><div class="stat-label">'+cc.title+'</div></div><div class="stat-card"><div class="stat-value">'+tx+'</div><div class="stat-label">累计XP</div></div></div>';if(nc)h+='<p style="font-size:12px">距离下一级 <strong>'+nc.title+'</strong> 还需 <strong style="color:#FF9800">'+Math.max(0,nc.xpNeeded-tx)+' XP</strong></p>';else h+='<p style="font-size:12px;color:#B8860B;font-weight:bold">🎉 已满级！</p>';h+='<table class="level-table"><tr><th>等级</th><th>称号</th><th>XP</th><th>状态</th></tr>';levelConfig.forEach(l=>{let c='',s='🔒';if(l.level===cl){c='lv-current';s='⭐当前'}else if(l.level<cl){c='lv-done';s='✅'}h+='<tr class="'+c+'"><td>Lv.'+l.level+'</td><td>'+l.title+'</td><td>'+l.xpNeeded+'</td><td>'+s+'</td></tr>'});h+='</table><div style="margin-top:8px;font-size:11px;color:#666"><strong>经验规则：</strong>达标+15，未达标+6，每日全完成+30</div></div>';document.getElementById('levelInfoContent').innerHTML=h;document.getElementById('levelModal').style.display='flex'}
+function showLevelInfo(){const x=getXpData();const tx=x.totalXP||0,cl=x.level||1;const cc=levelConfig.find(l=>l.level===cl)||levelConfig[0],nc=levelConfig.find(l=>l.level===cl+1),mc=levelConfig[levelConfig.length-1];let h='<div style="text-align:left">';h+='<div class="stats-grid" style="margin-bottom:8px"><div class="stat-card"><div class="stat-value">Lv.'+cl+'</div><div class="stat-label">'+cc.title+'</div></div><div class="stat-card"><div class="stat-value">'+tx+'</div><div class="stat-label">累计XP</div></div></div>';if(nc)h+='<p style="font-size:12px">距离下一级 <strong>'+nc.title+'</strong> 还需 <strong style="color:#FF9800">'+Math.max(0,nc.xpNeeded-tx)+' XP</strong></p>';else h+='<p style="font-size:12px;color:#B8860B;font-weight:bold">🎉 已满级！</p>';h+='<table class="level-table"><tr><th>等级</th><th>称号</th><th>XP</th><th>状态</th></tr>';levelConfig.forEach(l=>{let c='',s='🔒';if(l.level===cl){c='lv-current';s='⭐当前'}else if(l.level<cl){c='lv-done';s='✅'}h+='<tr class="'+c+'"><td>Lv.'+l.level+'</td><td>'+l.title+'</td><td>'+l.xpNeeded+'</td><td>'+s+'</td></tr>'});h+='</table><div style="margin-top:8px;font-size:11px;color:#666"><strong>经验规则：</strong>非常好+15，达标+10，未达标+4，每日全完成+20<br><strong>动态标准：</strong>随训练次数慢慢降低，趋近于"非常好"水平（200次训练后达到最低标准）</div></div>';document.getElementById('levelInfoContent').innerHTML=h;document.getElementById('levelModal').style.display='flex'}
 let dailyActive=false,dailyTaskIdx=-1;
 const dailyModeNames={number:'数字舒尔特',hanzi:'汉字模式',color:'色彩干扰',flash:'闪忆方格',word:'色彩识字',chaos:'乱序舒尔特',reverse:'倒序舒尔特'};
-const dailyBaseGoal={number:30,hanzi:40,color:45,flash:30,word:60,chaos:30,reverse:30};
+const dailyBaseGoal=initialStandard;
 function seededRandom(ss){let h=1779033703^ss.length;for(let i=0;i<ss.length;i++){h=Math.imul(h^ss.charCodeAt(i),3432918353);h=(h<<13)|(h>>>19)}return function(){h=Math.imul(h^(h>>>16),2246822507);h=Math.imul(h^(h>>>13),3266489909);h^=h>>>16;return(h>>>0)/4294967296}}
-function generateDailyTasks(ds){const rand=seededRandom(ds);const modes=shuffleArr(['number','hanzi','color','flash','word','chaos','reverse'].slice()).slice(0,4);const tasks=[];for(let i=0;i<4;i++){const mode=modes[i];const size=4+Math.floor(rand()*3);const goal=mode==='word'?60:Math.round(dailyBaseGoal[mode]*Math.pow(1.5,size-5));tasks.push({mode,size,goal})}return{date:ds,tasks,results:tasks.map(()=>null),bonusGiven:false}}
+function generateDailyTasks(ds){const rand=seededRandom(ds);const modes=shuffleArr(['number','hanzi','color','flash','word','chaos','reverse'].slice()).slice(0,4);const tasks=[];for(let i=0;i<4;i++){const mode=modes[i];const size=4+Math.floor(rand()*3);const goal=mode==='word'?getDynamicStandard('word',5):getDynamicStandard(mode,size);tasks.push({mode,size,goal})}return{date:ds,tasks,results:tasks.map(()=>null),bonusGiven:false}}
 function getDailyData(){const ds=localDateStr(new Date());const key=ukey('daily_'+ds);let d=JSON.parse(localStorage.getItem(key)||'null');if(d&&d.date===ds&&d.v!==9&&d.results.every(r=>!r))d=null;if(!d||d.date!==ds){d=generateDailyTasks(ds);d.v=9;localStorage.setItem(key,JSON.stringify(d))}return d}
 function saveDailyData(d){localStorage.setItem(ukey('daily_'+d.date),JSON.stringify(d))}
 function getDailyHistory(){return JSON.parse(localStorage.getItem(ukey('daily_history'))||'[]')}
 function dailySummary(d){const total=d.results.reduce((a,r)=>a+(r?r.score:0),0);const avg=d.tasks.length>0?total/d.tasks.length:0;const grade=avg>=110?'S':avg>=100?'A':avg>=85?'B':avg>=60?'C':'D';return{total,grade}}
-let dailyLongPressTimer=null,dailyIsLongPress=false;
+// 改进2: 每日任务长按展开 - 修复滑动时自动收缩问题
+let dailyLongPressTimer=null,dailyIsLongPress=false,dailyIsScrolling=false,dailyScrollStartY=0;
 const dailyPanelEl=document.getElementById('dailyPanel');
-function dailyPanelPressStart(e){dailyIsLongPress=false;dailyLongPressTimer=setTimeout(()=>{dailyIsLongPress=true;dailyPanelEl.classList.add('expanded');document.getElementById('dailyHint').innerText='👆 点击收起';if(navigator.vibrate){try{navigator.vibrate(30)}catch(e){}}},500)}
-function dailyPanelPressEnd(e){if(dailyLongPressTimer){clearTimeout(dailyLongPressTimer);dailyLongPressTimer=null}if(e.target&&e.target.closest&&e.target.closest('button'))return;if(!dailyIsLongPress&&dailyPanelEl.classList.contains('expanded')){dailyPanelEl.classList.remove('expanded');document.getElementById('dailyHint').innerText='👆 长按查看今日任务'}}
+function dailyPanelPressStart(e){dailyIsLongPress=false;dailyIsScrolling=false;dailyScrollStartY=e.touches?e.touches[0].clientY:e.clientY;dailyLongPressTimer=setTimeout(()=>{if(dailyIsScrolling)return;dailyIsLongPress=true;dailyPanelEl.classList.add('expanded');document.getElementById('dailyHint').innerText='👆 点击收起';if(navigator.vibrate){try{navigator.vibrate(30)}catch(e){}}},500)}
+function dailyPanelPressMove(e){if(dailyLongPressTimer){const cy=e.touches?e.touches[0].clientY:e.clientY;if(Math.abs(cy-dailyScrollStartY)>10){dailyIsScrolling=true;clearTimeout(dailyLongPressTimer);dailyLongPressTimer=null}}}
+function dailyPanelPressEnd(e){if(dailyLongPressTimer){clearTimeout(dailyLongPressTimer);dailyLongPressTimer=null}if(e.target&&e.target.closest&&e.target.closest('button'))return;if(e.target&&e.target.closest&&e.target.closest('.daily-task'))return;if(!dailyIsLongPress&&dailyPanelEl.classList.contains('expanded')&&!dailyIsScrolling){dailyPanelEl.classList.remove('expanded');document.getElementById('dailyHint').innerText='👆 长按查看今日任务'}}
 dailyPanelEl.addEventListener('touchstart',dailyPanelPressStart,{passive:true});
+dailyPanelEl.addEventListener('touchmove',dailyPanelPressMove,{passive:true});
 dailyPanelEl.addEventListener('touchend',dailyPanelPressEnd);
-dailyPanelEl.addEventListener('touchmove',()=>{if(dailyLongPressTimer){clearTimeout(dailyLongPressTimer);dailyLongPressTimer=null}},{passive:true});
 dailyPanelEl.addEventListener('mousedown',dailyPanelPressStart);
+dailyPanelEl.addEventListener('mousemove',dailyPanelPressMove);
 dailyPanelEl.addEventListener('mouseup',dailyPanelPressEnd);
 dailyPanelEl.addEventListener('mouseleave',()=>{if(dailyLongPressTimer){clearTimeout(dailyLongPressTimer);dailyLongPressTimer=null}});
-function renderDailyPanel(){const d=getDailyData();const dc=d.results.filter(r=>r).length;document.getElementById('dailyProgressText').innerText=dc+'/'+d.tasks.length+(dc===d.tasks.length?' 已完成':'');document.getElementById('dailyProgressFill').style.width=(d.tasks.length>0?(dc/d.tasks.length*100):0)+'%';let html='';d.tasks.forEach((t,i)=>{const r=d.results[i];const ic=dailyActive&&dailyTaskIdx===i;let s=r?'<span class="dt-status done">✅ '+r.time+'s · '+r.score+'分'+(r.achieved?' 🏆':'')+'</span>':'<span class="dt-status todo">⬜ 未完成'+(ic?'（进行中）':'')+'</span>';html+='<div class="daily-task'+(ic?' current':'')+'"><div class="dt-name">任务'+(i+1)+'：'+dailyModeNames[t.mode]+(t.mode==='word'?'（25题）':' '+t.size+'x'+t.size)+'</div><div class="dt-goal">目标：'+t.goal+'秒</div><div class="dt-status-box">'+s+'</div><div class="dt-bar"><div class="dt-bar-fill" style="width:'+(r?'100':'0')+'%"></div></div></div>'});const ni=d.results.findIndex(r=>!r);if(ni===-1){const s=dailySummary(d);html+='<div class="daily-summary"><div style="font-size:14px;font-weight:bold">🎉 今日全部完成！</div><div style="font-size:32px;font-weight:bold;color:#FF9800;margin:6px 0">'+s.total+'分</div><div style="font-size:13px">评级：<span class="daily-grade grade-'+s.grade+'">'+s.grade+'</span></div></div>'}else html+='<button class="mode-btn golden daily-start-btn" onclick="startDailyTask('+ni+')">'+(dc===0?'🚀 开始第1个任务':'▶ 继续任务'+(ni+1))+'</button>';document.getElementById('dailyContent').innerHTML=html}
-function startDailyTask(idx){const d=getDailyData();dailyActive=true;dailyTaskIdx=idx;const t=d.tasks[idx];gridSize=t.size;document.getElementById('sizeSelect').value=String(t.size);initGame(t.mode,true);showDailyBanner();renderDailyPanel();document.querySelector('.info').scrollIntoView({behavior:'smooth',block:'center'})}
+// 改进2: 渲染每日任务，任务项可点击但必须按顺序
+function renderDailyPanel(){const d=getDailyData();const dc=d.results.filter(r=>r).length;document.getElementById('dailyProgressText').innerText=dc+'/'+d.tasks.length+(dc===d.tasks.length?' 已完成':'');document.getElementById('dailyProgressFill').style.width=(d.tasks.length>0?(dc/d.tasks.length*100):0)+'%';let html='';const firstUndone=d.results.findIndex(r=>!r);d.tasks.forEach((t,i)=>{const r=d.results[i];const ic=dailyActive&&dailyTaskIdx===i;const isClickable=(i===firstUndone);let s=r?'<span class="dt-status done">✅ '+r.time+'s · '+r.score+'分'+(r.achieved?' 🏆':'')+(r.isExcellent?' 🌟':'')+'</span>':'<span class="dt-status todo">⬜ 未完成'+(ic?'（进行中）':'')+(isClickable&&!ic?' 👆点击开始':'')+'</span>';html+='<div class="daily-task'+(ic?' current':'')+(isClickable&&!ic?' clickable':'')+'" '+(isClickable&&!ic?'onclick="startDailyTask('+i+')"':'')+'><div class="dt-name">任务'+(i+1)+'：'+dailyModeNames[t.mode]+(t.mode==='word'?'（25题）':' '+t.size+'x'+t.size)+'</div><div class="dt-goal">目标：'+t.goal+'秒</div><div class="dt-status-box">'+s+'</div><div class="dt-bar"><div class="dt-bar-fill" style="width:'+(r?'100':'0')+'%"></div></div></div>'});const ni=d.results.findIndex(r=>!r);if(ni===-1){const s=dailySummary(d);html+='<div class="daily-summary"><div style="font-size:14px;font-weight:bold">🎉 今日全部完成！</div><div style="font-size:32px;font-weight:bold;color:#FF9800;margin:6px 0">'+s.total+'分</div><div style="font-size:13px">评级：<span class="daily-grade grade-'+s.grade+'">'+s.grade+'</span></div></div>'}else html+='<button class="mode-btn golden daily-start-btn" onclick="startDailyTask('+ni+')">'+(dc===0?'🚀 开始第1个任务':'▶ 继续任务'+(ni+1))+'</button>';document.getElementById('dailyContent').innerHTML=html}
+// 改进2: 开始每日任务，滚动到训练方格
+function startDailyTask(idx){const d=getDailyData();dailyActive=true;dailyTaskIdx=idx;const t=d.tasks[idx];gridSize=t.size;document.getElementById('sizeSelect').value=String(t.size);initGame(t.mode,true);showDailyBanner();renderDailyPanel();setTimeout(()=>{document.getElementById('grid').scrollIntoView({behavior:'smooth',block:'center'})},100)}
 function showDailyBanner(){const d=getDailyData();const t=d.tasks[dailyTaskIdx];const b=document.getElementById('dailyBanner');b.innerHTML='📅 每日任务 '+(dailyTaskIdx+1)+'/'+d.tasks.length+'：'+dailyModeNames[t.mode]+' '+(t.mode==='word'?'25题':t.size+'x'+t.size)+' · 目标'+t.goal+'s <button class="daily-back-btn" onclick="backToDailyList()">返回</button>';b.style.display='block'}
 function backToDailyList(){clearInterval(timerInterval);isPlaying=false;flashPhase='idle';stopDistraction();if(flashTimeout){clearTimeout(flashTimeout);flashTimeout=null}document.getElementById('timer').innerText='0.0';renderDailyPanel();window.scrollTo({top:0,behavior:'smooth'})}
-function recordDailyResult(time,achieved){const d=getDailyData();const t=d.tasks[dailyTaskIdx];let score=achieved?100+Math.min(20,Math.round(Math.max(0,(t.goal-time)/t.goal*100))):Math.min(99,Math.max(0,Math.round(100*t.goal/Math.max(time,0.1))));const prev=d.results[dailyTaskIdx];if(!prev||score>prev.score)d.results[dailyTaskIdx]={time,achieved,score};if(d.results.every(r=>r)&&!d.bonusGiven){d.bonusGiven=true;addXP(30);const s=dailySummary(d);const hist=getDailyHistory();const entry={date:d.date,score:s.total,grade:s.grade,done:d.tasks.length,total:d.tasks.length};const ex=hist.findIndex(h=>h.date===d.date);if(ex>=0)hist[ex]=entry;else hist.push(entry);localStorage.setItem(ukey('daily_history'),JSON.stringify(hist))}saveDailyData(d);showDailyResultModal(dailyTaskIdx,time,achieved,d.results[dailyTaskIdx].score)}
-function showDailyResultModal(idx,time,achieved,score){const d=getDailyData();const ni=d.results.findIndex(r=>!r);let btns;if(ni===-1)btns='<button class="mode-btn golden" onclick="closeModal(\'dailyResultModal\');dailyActive=false;dailyTaskIdx=-1;document.getElementById(\'dailyBanner\').style.display=\'none\';renderDailyPanel();window.scrollTo({top:0,behavior:\'smooth\'})">📊 查看结算</button>';else btns='<button class="mode-btn" style="background:#607D8B" onclick="closeModal(\'dailyResultModal\');startDailyTask('+idx+')">再试一次</button><button class="mode-btn golden" onclick="closeModal(\'dailyResultModal\');startDailyTask('+ni+')">下一个 ▶</button>';document.getElementById('dailyResultContent').innerHTML='<p>任务'+(idx+1)+'：'+dailyModeNames[d.tasks[idx].mode]+(d.tasks[idx].mode==='word'?'（25题）':' '+d.tasks[idx].size+'x'+d.tasks[idx].size)+'</p><p>用时：<strong>'+time+'s</strong>（目标'+d.tasks[idx].goal+'s）</p><p>'+(achieved?'🏆 达标！':'未达标')+'</p><p style="font-size:24px;font-weight:bold;color:#FF9800">+'+score+'分</p><div>'+btns+'</div>';document.getElementById('dailyResultModal').style.display='flex'}
+// 改进5+6: 记录每日任务结果，包含isExcellent
+function recordDailyResult(time,achieved,isExcellent){const d=getDailyData();const t=d.tasks[dailyTaskIdx];let score=achieved?100+Math.min(20,Math.round(Math.max(0,(t.goal-time)/t.goal*100))):Math.min(99,Math.max(0,Math.round(100*t.goal/Math.max(time,0.1))));const prev=d.results[dailyTaskIdx];if(!prev||score>prev.score)d.results[dailyTaskIdx]={time,achieved,score,isExcellent:isExcellent||false};if(d.results.every(r=>r)&&!d.bonusGiven){d.bonusGiven=true;addXP(20);const s=dailySummary(d);const hist=getDailyHistory();const entry={date:d.date,score:s.total,grade:s.grade,done:d.tasks.length,total:d.tasks.length};const ex=hist.findIndex(h=>h.date===d.date);if(ex>=0)hist[ex]=entry;else hist.push(entry);localStorage.setItem(ukey('daily_history'),JSON.stringify(hist))}saveDailyData(d);showDailyResultModal(dailyTaskIdx,time,achieved,d.results[dailyTaskIdx].score,d.results[dailyTaskIdx].isExcellent)}
+function showDailyResultModal(idx,time,achieved,score,isExcellent){const d=getDailyData();const ni=d.results.findIndex(r=>!r);let btns;if(ni===-1)btns='<button class="mode-btn golden" onclick="closeModal(\'dailyResultModal\');dailyActive=false;dailyTaskIdx=-1;document.getElementById(\'dailyBanner\').style.display=\'none\';renderDailyPanel();window.scrollTo({top:0,behavior:\'smooth\'})">📊 查看结算</button>';else btns='<button class="mode-btn" style="background:#607D8B" onclick="closeModal(\'dailyResultModal\');startDailyTask('+idx+')">再试一次</button><button class="mode-btn golden" onclick="closeModal(\'dailyResultModal\');startDailyTask('+ni+')">下一个 ▶</button>';document.getElementById('dailyResultContent').innerHTML='<p>任务'+(idx+1)+'：'+dailyModeNames[d.tasks[idx].mode]+(d.tasks[idx].mode==='word'?'（25题）':' '+d.tasks[idx].size+'x'+d.tasks[idx].size)+'</p><p>用时：<strong>'+time+'s</strong>（目标'+d.tasks[idx].goal+'s）</p><p>'+(isExcellent?'🌟 非常好！顶尖水平！':achieved?'🏆 达标！':'未达标')+'</p><p style="font-size:24px;font-weight:bold;color:#FF9800">+'+score+'分</p><div>'+btns+'</div>';document.getElementById('dailyResultModal').style.display='flex'}
 function showRanking(){const modal=document.getElementById('rankingModal'),content=document.getElementById('rankingContent');const modes=['number','hanzi','color','flash','word','memory','chaos','reverse','colorDistract','antiDistract','reverseMem'];const names=['数字舒尔特','汉字模式','色彩干扰','闪忆方格','色彩识字','数字记忆','乱序舒尔特','倒序舒尔特','彩格干扰','抗干扰训练','听数倒背'];let recs=[];modes.forEach((mode,idx)=>{for(let size=3;size<=9;size++){const h=JSON.parse(localStorage.getItem(ukey(mode+'_'+size))||'[]');if(h.length>0){const best=mode==='memory'||mode==='reverseMem'?Math.max(...h.map(x=>x.time)):Math.min(...h.map(x=>x.time));const br=h.find(x=>x.time===best);recs.push({mode:names[idx],modeKey:mode,size:size,time:best,date:br?br.date:''})}}});recs.sort((a,b)=>a.time-b.time);if(recs.length===0)content.innerHTML='<p style="color:#aaa;text-align:center;padding:18px">暂无记录</p>';else content.innerHTML=recs.map((r,idx)=>{let pc=idx===0?'gold':idx===1?'silver':idx===2?'bronze':'normal';let md=idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':'';return '<div class="rank-item"><div class="rank-pos '+pc+'">'+(md||(idx+1))+'</div><div class="rank-info"><div class="rank-mode">'+r.mode+' '+r.size+'x'+r.size+'</div><div class="rank-detail">'+r.date+'</div></div><div class="rank-time">'+r.time+(r.modeKey==='memory'||r.modeKey==='reverseMem'?'%':'s')+'</div></div>'}).join('');modal.style.display='flex'}
 function showStats(){const modal=document.getElementById('statsModal'),content=document.getElementById('statsContent');const x=getXpData(),cid=getCheckInData();let tg=0,ta=0,tx=x.totalXP||0;const ah=[];const am=['number','hanzi','color','flash','word','memory','chaos','reverse','colorDistract','antiDistract','reverseMem'];for(let i=3;i<=9;i++)am.forEach(m=>{const h=JSON.parse(localStorage.getItem(ukey(m+'_'+i))||'[]');tg+=h.length;ta+=h.filter(x=>x.achieved).length;ah.push(...h)});const cdays=Object.keys(cid).length;let avg=0;const ts=ah.filter(h=>!['memory','reverseMem'].includes(h.modeKey)&&typeof h.time==='number'&&h.time<1000).map(h=>h.time);if(ts.length>0)avg=(ts.reduce((a,b)=>a+b,0)/ts.length).toFixed(1);const cl=x.level||1;const ct=levelConfig.find(l=>l.level===cl)?levelConfig.find(l=>l.level===cl).title:'新手';content.innerHTML='<div class="stats-grid"><div class="stat-card"><div class="stat-value">'+cl+'</div><div class="stat-label">等级</div></div><div class="stat-card"><div class="stat-value">'+tx+'</div><div class="stat-label">总XP</div></div><div class="stat-card"><div class="stat-value">'+tg+'</div><div class="stat-label">训练次数</div></div><div class="stat-card"><div class="stat-value">'+ta+'</div><div class="stat-label">达标次数</div></div><div class="stat-card"><div class="stat-value">'+cdays+'</div><div class="stat-label">打卡天数</div></div><div class="stat-card"><div class="stat-value">'+(tg>0?Math.round(ta/tg*100):0)+'%</div><div class="stat-label">达标率</div></div><div class="stat-card"><div class="stat-value">'+avg+'s</div><div class="stat-label">平均用时</div></div><div class="stat-card"><div class="stat-value" style="font-size:14px">'+ct+'</div><div class="stat-label">称号</div></div></div>';modal.style.display='flex'}
 function showBackup(){document.getElementById('backupModal').style.display='flex'}
